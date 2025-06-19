@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "PDF_Llama": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

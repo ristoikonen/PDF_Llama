@@ -1,0 +1,7 @@
+The quick brown fox jumps over the lazy dog.
+    This is a sample document to demonstrate file reading and summarization using Semantic Kernel and Ollama.
+    It contains a few sentences about various topics.
+    We are exploring how to integrate local data with large language models for different tasks.
+    The Semantic Kernel makes it easier to build AI applications by providing a framework for plugins and orchestrators.
+    Ollama allows you to run open-source large language models locally on your machine, providing privacy and control.
+    This example showcases a basic use case, but the possibilities are vast, including more complex RAG (Retrieval Augmented Generation) scenarios.
