@@ -45,8 +45,10 @@ public async Task<string> SummarizeFile(
             return $"Error reading file {pdfpath}: {ex.Message}";
         }
 
-        // Create a prompt for the AI model.
-        // We instruct the model to summarize the provided text.
+        // https://github.com/microsoft/semantic-kernel/blob/main/dotnet/samples/GettingStartedWithTextSearch/InMemoryVectorStoreFixture.cs#L139
+
+
+        // Create a prompt for the AI model.Instruct the model to summarize the provided text.
         var prompt = @$"Summarize the following text concisely and accurately.
             If the text is too short or doesn't contain meaningful information, state that.
 
@@ -59,9 +61,7 @@ public async Task<string> SummarizeFile(
 
         try
         {
-            // Invoke the AI model with the generated prompt.
-            // The 'InvokePromptAsync' method sends the prompt to the configured
-            // text generation service (Ollama in this case) and gets a response.
+            // Invoke Ollama text generation service with the prompt.
             var result = await kernel.InvokePromptAsync(prompt);
 
             // Extract and return the generated summary.
@@ -73,6 +73,8 @@ public async Task<string> SummarizeFile(
             Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
             return $"Error invoking AI for summarization: {ex.Message}";
         }
+
+
     }
 
 }
