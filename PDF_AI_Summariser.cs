@@ -1,103 +1,37 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.SemanticKernel;
-using System.Configuration;
-using System.Dynamic;
-using static System.Net.Mime.MediaTypeNames;
+﻿using Microsoft.SemanticKernel;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
+
 namespace PDF_Llama;
 
-public class Configurator
+
+public sealed class PDF_AI_Summariser
 {
-    public Dictionary<string, string?> Values;
-    public dynamic Store;
-    public Configurator()
+    public Uri ModelEndpoint { get; set; }
+    public string ModelName { get; set; }
+
+    public PDF_AI_Summariser(Uri modelEndpoint, string modelName)
     {
-
-        Store = new ExpandoObject();
-        Store.Endpoints = new ExpandoObject();
-        Store.Endpoints.ModelName = "llama3.2";
-        Store.Endpoints.ModelEndpoint = new Uri(@"http://localhost:11434");
-        //Console.WriteLine(${Store.Endpoints.ModelEndpoint});
-
-        Dictionary<String, object> dict = new Dictionary<string, object>();
-        Dictionary<String, object> address = new Dictionary<string, object>();
-        dict["Address"] = address;
-        address["State"] = "WA";
-        Console.WriteLine(((Dictionary<string, object>)dict["Address"])["State"]);
-
-        Values = new Dictionary<string, string?>
-        {
-            ["SecretKey"] = "Dictionary MyKey Value",
-            ["TransientFaultHandlingOptions:Enabled"] = bool.TrueString,
-            ["TransientFaultHandlingOptions:AutoRetryDelay"] = "00:00:07",
-            ["Logging:LogLevel:Default"] = "Warning"
-        };
-
-    }
-
-    // public string MyProperty { get; set; }
-   
-
-}
-
-
-
-
-public class Program
-{
-    static async Task Main(string[] args)
-    {
-        ConfigurationManager configurationManager = new ConfigurationManager();
-
-        //Configuration config = ConfigurationManager..OpenExeConfiguration(Application.ExecutablePath);
-        //ConfigurationSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
-
-        var starts = await FillStartMeUpsAsync();
-        //var config = configurationManager.GetRequiredSection("appSettings");
-
-        var configvalue1 = configurationManager.Sources; // ("ModelEndpoint"); //.AppSettings["countoffiles"];
-        // write title
-
-        SpectreConsoleOutput.DisplayTitleH3($"PDF with Llama: PDF_Llama");
-
-        // user choice scenarios
-        var scenarios = SpectreConsoleOutput.SelectScenarios();
-        var scenario = scenarios[0];
-
-        // present
-        switch (scenario)
-        {
-            case "Generate Liquid HTML template":
-                PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
-                await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
-                break;
-            case "Handlebar function generate nutrition data":
-                break;
-            case "About":
-                // code README.md
-                System.Diagnostics.Process p = new System.Diagnostics.Process();
-                p.StartInfo.WorkingDirectory = @"C:\Users\risto\source\repos\Kernel";
-                p.StartInfo.FileName = "runr README.MD";
-                p.StartInfo.UseShellExecute = true;
-                p.Start();
-
-                break;
-        }
+        this.ModelEndpoint = modelEndpoint;
+        this.ModelName = modelName;
     }
 
 
-    public static async Task OldMain(string[] args)
+    public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"VN.pdf")
     {
         // --- Configuration ---
         const string ollamaEndpoint = "http://localhost:11434";
         const string ollamaModel = "llama3.2";
-        // Name of the sample text file to summarize. Make sure this file exists in the
-        // same directory as your application's executable, or provide a full path.
+        // Name of the sample text file to summarize. Make sure this file exists in the directory of application's executable, or provide a full path.
         const string sampleFileName = "my_document.txt";
-        const string PDF_filename = @"VN.pdf";
+        //const string PDF_filename = @"VN.pdf";
 
         Console.WriteLine("Setting up Semantic Kernel with Ollama...");
 
@@ -177,15 +111,5 @@ public class Program
             Console.WriteLine($"Error creating sample file {fileName}: {ex.Message}");
         }
     }
-
-
-    static async Task<StartMeUps> FillStartMeUpsAsync()
-    {
-        return await Task.FromResult<StartMeUps>(new StartMeUps
-        {
-            ModelEndpoint = new Uri("http://localhost:11434"),
-            ModelName = "llama3.2" // "mistral"  "deepseek-r1:1.5b"
-        });
-    }
-
 }
+
