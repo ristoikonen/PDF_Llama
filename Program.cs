@@ -15,7 +15,8 @@ public class Configurator
     public dynamic Store;
     public Configurator()
     {
-
+        // https://stackoverflow.com/questions/1653046/what-are-the-true-benefits-of-expandoobject
+        // https://www.daveabrock.com/2021/01/19/config-top-level-programs/
         Store = new ExpandoObject();
         Store.Endpoints = new ExpandoObject();
         Store.Endpoints.ModelName = "llama3.2";
@@ -61,7 +62,7 @@ public class Program
         var configvalue1 = configurationManager.Sources; // ("ModelEndpoint"); //.AppSettings["countoffiles"];
         // write title
 
-        SpectreConsoleOutput.DisplayTitleH3($"PDF with Llama: PDF_Llama");
+        SpectreConsoleOutput.DisplayTitleH3($"Use Semantic Kernel Plugin; PDF Summariser -  Get response from Ollama IChatClient");
 
         // user choice scenarios
         var scenarios = SpectreConsoleOutput.SelectScenarios();
@@ -70,11 +71,13 @@ public class Program
         // present
         switch (scenario)
         {
-            case "Generate Liquid HTML template":
+            case "PDF AI Summariser":
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
                 break;
-            case "Handlebar function generate nutrition data":
+            case "Get Response":
+                DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName);
+                await dotnetai.GetResponse("tell me about albert einstein");
                 break;
             case "About":
                 // code README.md

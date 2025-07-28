@@ -1,4 +1,11 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Extensions.AI;
+//using Microsoft.Extensions.AI.Ollama;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Embeddings;
+using OllamaSharp;
+using OllamaSharp.Models;
+using Microsoft.Extensions.AI;
+using OpenAI;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -23,6 +30,39 @@ public sealed class PDF_AI_Summariser
         this.ModelName = modelName;
     }
 
+    public async Task GetResponse(string question = @"Hello!")
+    {
+        // --- Configuration ---
+        const string ollamaEndpoint = "http://localhost:11434";
+        const string ollamaModel = "llama3.2";
+
+        // Name of the sample text file to summarize. Make sure this file exists in the directory of application's executable, or provide a full path.
+        //const string sampleFileName = "my_document.txt";
+        //const string PDF_filename = @"VN.pdf";
+
+        Console.WriteLine("Setting up OllamaChatClient...");
+
+
+        // --- Initialize the Semantic Kernel ---
+        try
+        {
+
+            IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
+            var response = await client.GetResponseAsync(question);
+            var txt = response?.Text;
+            Console.WriteLine($"Response: {txt}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+
+    }
+
 
     public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"VN.pdf")
     {
@@ -43,11 +83,14 @@ public sealed class PDF_AI_Summariser
         // --- Initialize the Semantic Kernel ---
         try
         {
-            // Add the Ollama text generation service to the kernel.
+            // Fix for CS1744: Named argument 'modelId' specifies a parameter for which a positional argument has already been given.
+            // The issue occurs because the named argument 'modelId' is used after a positional argument has already been provided.
+            // To fix this, ensure all arguments are either positional or named consistently.
+
             var builder = Kernel.CreateBuilder()
                 .AddOllamaTextGeneration(
-                    modelId: ollamaModel,
-                    endpoint: new Uri(ollamaEndpoint)
+                    endpoint: new Uri(ollamaEndpoint), // Use named argument for 'endpoint'
+                    modelId: ollamaModel              // Use named argument for 'modelId'
                 );
 
             // Build the kernel instance
@@ -75,6 +118,53 @@ public sealed class PDF_AI_Summariser
             Console.WriteLine("\n--- Summary from Ollama ---");
             Console.WriteLine(result.GetValue<string>());
             Console.WriteLine("---------------------------\n");
+
+
+            builder.Services.AddOllamaTextGeneration(
+                modelId: ollamaModel,
+                endpoint: new Uri(ollamaEndpoint)
+            );
+
+            var Input = new List<string> { "your text to embed" };
+
+            // Assuming you have an IHttpClientFactory and a properly configured OllamaApiClient
+            var ollamaClient = new OllamaApiClient(new Uri(ollamaEndpoint), ollamaModel);
+            var gen = ollamaClient.AsTextEmbeddingGenerationService();
+            var embeds  = await gen.GenerateEmbeddingsAsync(Input);
+
+            // Create the embedding service
+            //var embeddingService = OllamaApiClient.AsEmbeddingGenerationService(ollamaClient, "nomic-embed-text");
+
+            // Generate embeddings for a text
+            //var text = "This is a sample sentence.";
+            //var embedding = await embeddingService.GenerateEmbeddingAsync(text);
+
+
+            var embeddingRequest = new EmbedRequest
+            {
+                 Input = Input,
+            };
+
+            var embeddingGenerator = new OllamaApiClient(new Uri(ollamaEndpoint))
+                .EmbedAsync(embeddingRequest);
+
+            //OllamaApiClientExtensions
+            //    .AddOllamaTextEmbeddingGeneration(
+            //        builder.Services,
+                    
+            //        modelId: ollamaModel,
+            //        endpoint: new Uri(ollamaEndpoint)
+            //    );
+
+            //var embeddingGenerator = new OllamaEmbeddingGenerator(
+            //        modelId: ollamaModel,
+            //        endpoint: new Uri(ollamaEndpoint)
+            //    );
+
+            //var embeddingGenerator = new AddOllamaTextEmbeddingGeneration(ollamaEndpoint, ollamaModel)
+            //    .GetEmbeddingClient("your chosen model")
+            //    .AsIEmbeddingGenerator();
+
         }
         catch (Exception ex)
         {

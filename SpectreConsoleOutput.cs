@@ -1,16 +1,16 @@
 ﻿using System.Collections.Generic;
 using System.Drawing;
-using Microsoft.Extensions.CommandLineUtils;
+//using Microsoft.Extensions.CommandLineUtils;
 using OllamaSharp.Models.Chat;
 using Spectre.Console;
 
 namespace PDF_Llama;
 
-public class Settings : CommandSettings
-{
+//public class Settings : CommandSettings
+//{
     //[CommandArgument(0, "<name>")]
-    public string? Name { get; set; }
-}
+//    public string? Name { get; set; }
+//}
 
 // Only Spectre Console's code here!
 public static class SpectreConsoleOutput
@@ -29,10 +29,10 @@ public static class SpectreConsoleOutput
                     "[grey](Press [blue]<space>[/] to toggle a scenario, " +
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
-                "Generate Liquid HTML template",
-                "Handlebar function generate nutrition data",
+                "PDF AI Summariser",
+                "Get Response",
                     })
-                .AddChoiceGroup("Open a README", new[]
+                .AddChoiceGroup("Print a README", new[]
                     {"About",
                     })
                 );
