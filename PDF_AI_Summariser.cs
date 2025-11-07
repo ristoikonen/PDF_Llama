@@ -1,23 +1,12 @@
-﻿using Microsoft.Extensions.AI;
-//using Microsoft.Extensions.AI.Ollama;
-using Microsoft.SemanticKernel;
+﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using OllamaSharp.Models;
-using Microsoft.Extensions.AI;
-using OpenAI;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-
 namespace PDF_Llama;
-
 
 public sealed class PDF_AI_Summariser
 {
@@ -30,40 +19,7 @@ public sealed class PDF_AI_Summariser
         this.ModelName = modelName;
     }
 
-    public async Task GetResponse(string question = @"Hello!")
-    {
-        // --- Configuration ---
-        const string ollamaEndpoint = "http://localhost:11434";
-        const string ollamaModel = "llama3.2";
-
-        // Name of the sample text file to summarize. Make sure this file exists in the directory of application's executable, or provide a full path.
-        //const string sampleFileName = "my_document.txt";
-        //const string PDF_filename = @"VN.pdf";
-
-        Console.WriteLine("Setting up OllamaChatClient...");
-
-
-        // --- Initialize the Semantic Kernel ---
-        try
-        {
-
-            IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
-            var response = await client.GetResponseAsync(question);
-            var txt = response?.Text;
-            Console.WriteLine($"Response: {txt}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
-        }
-
-        Console.WriteLine("Press any key to exit.");
-
-    }
-
-
+    
     public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"VN.pdf")
     {
         // --- Configuration ---

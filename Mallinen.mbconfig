@@ -1,0 +1,169 @@
+﻿{
+  "Scenario": "Forecasting",
+  "DataSource": {
+    "Version": 3,
+    "EscapeCharacter": "\"",
+    "ReadMultiLines": false,
+    "KeepDiacritics": false,
+    "KeepPunctuations": false,
+    "AllowQuoting": false,
+    "Type": "TabularFile",
+    "FilePath": "C:\\Users\\risto\\OneDrive\\Documents\\JKM_Price.csv",
+    "Delimiter": ",",
+    "DecimalMarker": ".",
+    "HasHeader": true,
+    "ColumnProperties": [
+      {
+        "ColumnName": "Date",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "String",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      },
+      {
+        "ColumnName": "Price",
+        "ColumnPurpose": "Feature",
+        "ColumnDataFormat": "Single",
+        "IsCategorical": false,
+        "Type": "Column",
+        "Version": 5
+      }
+    ]
+  },
+  "Environment": {
+    "Type": "LocalCPU",
+    "Version": 1
+  },
+  "RunHistory": {
+    "Version": 3,
+    "Type": "Result",
+    "Trials": [
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "ForecastBySsa",
+        "Score": 0.77017521697186475,
+        "RuntimeInSeconds": 0.011,
+        "Parameter": {
+          "_SCHEMA_": "e0",
+          "e0": {
+            "WindowSize": 9,
+            "SeriesLength": 28,
+            "TrainSize": 137,
+            "Horizon": 10,
+            "OutputColumnName": "Price",
+            "InputColumnName": "Price",
+            "ConfidenceLowerBoundColumn": "Price_LB",
+            "ConfidenceUpperBoundColumn": "Price_UB"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "ForecastBySsa",
+        "Score": 0.77017521697186475,
+        "RuntimeInSeconds": 0.013,
+        "Parameter": {
+          "_SCHEMA_": "e0",
+          "e0": {
+            "WindowSize": 9,
+            "SeriesLength": 20,
+            "TrainSize": 137,
+            "Horizon": 10,
+            "OutputColumnName": "Price",
+            "InputColumnName": "Price",
+            "ConfidenceLowerBoundColumn": "Price_LB",
+            "ConfidenceUpperBoundColumn": "Price_UB"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "ForecastBySsa",
+        "Score": 0.77017521697186475,
+        "RuntimeInSeconds": 0.018,
+        "Parameter": {
+          "_SCHEMA_": "e0",
+          "e0": {
+            "WindowSize": 9,
+            "SeriesLength": 451,
+            "TrainSize": 137,
+            "Horizon": 10,
+            "OutputColumnName": "Price",
+            "InputColumnName": "Price",
+            "ConfidenceLowerBoundColumn": "Price_LB",
+            "ConfidenceUpperBoundColumn": "Price_UB"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "ForecastBySsa",
+        "Score": 0.77017521697186475,
+        "RuntimeInSeconds": 0.009,
+        "Parameter": {
+          "_SCHEMA_": "e0",
+          "e0": {
+            "WindowSize": 9,
+            "SeriesLength": 40,
+            "TrainSize": 137,
+            "Horizon": 10,
+            "OutputColumnName": "Price",
+            "InputColumnName": "Price",
+            "ConfidenceLowerBoundColumn": "Price_LB",
+            "ConfidenceUpperBoundColumn": "Price_UB"
+          }
+        }
+      },
+      {
+        "Version": 1,
+        "Type": "Trial",
+        "TrainerName": "ForecastBySsa",
+        "Score": 0.77017521697186475,
+        "RuntimeInSeconds": 0.01,
+        "Parameter": {
+          "_SCHEMA_": "e0",
+          "e0": {
+            "WindowSize": 9,
+            "SeriesLength": 51,
+            "TrainSize": 137,
+            "Horizon": 10,
+            "OutputColumnName": "Price",
+            "InputColumnName": "Price",
+            "ConfidenceLowerBoundColumn": "Price_LB",
+            "ConfidenceUpperBoundColumn": "Price_UB"
+          }
+        }
+      }
+    ],
+    "Estimators": {
+      "e0": "ForecastBySsa"
+    },
+    "Schema": "e0",
+    "MetricName": "RMSE",
+    "ModelFilePath": "C:\\Users\\risto\\source\\repos\\PDF_Llama\\Mallinen.mlnet"
+  },
+  "Type": "TrainingConfig",
+  "Version": 5,
+  "TrainingOption": {
+    "Version": 3,
+    "OptimizeMetric": "RMSE",
+    "Subsampling": false,
+    "Type": "ForecastingTrainingOption",
+    "TrainingTime": 10,
+    "UseCrossValidation": false,
+    "Horizon": 10,
+    "TimeColumn": "Date",
+    "LabelColumn": "Price",
+    "UseDefaultIndex": false,
+    "ValidationOption": {
+      "Version": 0,
+      "Type": "CrossValidationValidationOption",
+      "NumberOfFolds": 5
+    }
+  }
+}

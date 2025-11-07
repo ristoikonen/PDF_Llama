@@ -31,10 +31,12 @@ public static class SpectreConsoleOutput
                 .AddChoices(new[] {
                 "PDF AI Summariser",
                 "Get Response",
+                "Generate image",
+                "IChatClient",
                     })
-                .AddChoiceGroup("Print a README", new[]
-                    {"About",
-                    })
+                //.AddChoiceGroup("Chats", new[]
+                //    {"IChatClient ",
+                //    })
                 );
         return scenarios;
     }
