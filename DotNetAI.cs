@@ -47,6 +47,9 @@ public sealed class DotNetAI
         Console.WriteLine("Press any key to exit.");
     }
 
+    // Suppress MEAI001 diagnostic for evaluation-only API usage
+#pragma warning disable MEAI001
+
     public async Task CreateImage(string question = @"Hello!")
     {
         // --- Configuration ---
@@ -64,7 +67,7 @@ public sealed class DotNetAI
                 There is a trail visible in the foreground.
                 The postal card has text in red saying: 'You are invited for a hike!'
                 """,
-                new ImageGenerationOptions
+                new OpenAI.Images.ImageGenerationOptions
                 {
                     Size = GeneratedImageSize.W1024xH1024
                 });
@@ -83,7 +86,6 @@ public sealed class DotNetAI
         Console.WriteLine("Press any key to exit.");
     }
 
-
-
+#pragma warning restore MEAI001
 
 }

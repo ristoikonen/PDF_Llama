@@ -18,16 +18,15 @@ public sealed class PDF_AI_Summariser
         this.ModelEndpoint = modelEndpoint;
         this.ModelName = modelName;
     }
-
-    
-    public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"VN.pdf")
+        
+    public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
     {
         // --- Configuration ---
         const string ollamaEndpoint = "http://localhost:11434";
         const string ollamaModel = "llama3.2";
         // Name of the sample text file to summarize. Make sure this file exists in the directory of application's executable, or provide a full path.
         const string sampleFileName = "my_document.txt";
-        //const string PDF_filename = @"VN.pdf";
+        const string PDF_filename_local = @"VN.pdf";
 
         Console.WriteLine("Setting up Semantic Kernel with Ollama...");
 
@@ -68,7 +67,7 @@ public sealed class PDF_AI_Summariser
             // The file path is passed as a named argument.
             var result = await kernel.InvokeAsync(
                 pdfContentPlugin["SummarizeFile"],
-                new() { ["pdfFileName"] = PDF_filename }
+                new() { ["pdfFileName"] = PDF_filename_local }
             );
 
             Console.WriteLine("\n--- Summary from Ollama ---");

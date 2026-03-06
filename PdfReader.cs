@@ -55,9 +55,9 @@ public class Reader
     // Get blocks as json 
     public List<string> ReadJSON(List<PDFText> pdfList)
     {
-        List<string> jsonList= new List<string>();
+        List<string> jsonList = new List<string>();
 
-        if (pdfList is not null || pdfList?.Count >  0)
+        if (pdfList is not null || pdfList?.Count > 0)
         {
             foreach (var pdf in pdfList)
             {
@@ -167,7 +167,7 @@ public class Reader
                     var height = heightToken is NumericToken heightNumeric ? (int)heightNumeric.Int : 0;
                     */
 
-                    if (bytearr is not null && bytearr.Length>0)
+                    if (bytearr is not null && bytearr.Length > 0)
                     {
                         txtpage.Images.Add(bytearr);
                     }
@@ -175,7 +175,7 @@ public class Reader
                     //File.WriteAllBytes($"image_{i++}.jpeg", bytes);
                     // public bool TryGetPng([NotNullWhen(true)] out byte[]? bytes) => PngFromPdfImageFactory.TryGenerate(this, out bytes);
 
-                }   
+                }
 
 
                 // Add page 
@@ -200,9 +200,9 @@ public class Reader
                 }
                 */
 
-                }
             }
-            return pdftext;
+        }
+        return pdftext;
     }
 
     public List<string>? ReadPdfBlocks(string filePath)
@@ -210,6 +210,12 @@ public class Reader
         List<string> blocks = new List<string>();
         StringBuilder text = new StringBuilder();
         StringBuilder pagetext = new StringBuilder();
+
+
+        var tmpfilepath = @"C:\Users\risto\source\repos\PDF_Llama\bin\Debug\net10.0\my_document.txt";
+
+        //TODO:Fix path passing!
+        filePath = tmpfilepath;
 
         if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
         {
@@ -232,18 +238,17 @@ public class Reader
 
                 // Segment page
                 var pageSegmenter = DocstrumBoundingBoxes.Instance;
-                
+
                 // Read blocks from words
                 var textblocks = pageSegmenter.GetBlocks(words);
                 blocks.AddRange(textblocks.Select(b => b.Text));
                 //txtpage.BlockText = new List<string>();
                 //txtpage.BlockText.AddRange(textblocks.Select(b => b.Text));
-                
+
                 //pdftext.Pages.Add(txtpage);
             }
         }
         return blocks;
     }
-
-
 }
+

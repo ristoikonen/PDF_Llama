@@ -29,14 +29,25 @@ public async Task<string> SummarizeFile(
     {
 
         string pdfpath = "";
+        string prompt = "";
+
+
         List<string>? json_chunks = null; 
         try
         {
             Reader reader = new Reader(PDFPath);
             pdfpath = PDFPath + pdfFileName;
             string filePath = Path.GetFullPath(pdfpath);
+            var pdftxt = reader.ReadPdf(filePath); // Ensure the file can be read before proceeding.
+                                                 //json_chunks = reader.ReadPdfBlocks(pdfpath);
+                                                 // Create a prompt for the AI model.Instruct the model to summarize the provided text.
+            prompt = @$"Summarize the following text concisely and accurately.
+            If the text is too short or doesn't contain meaningful information, state that.
 
-            json_chunks = reader.ReadPdfBlocks(pdfpath);
+            Text to summarize:
+            {pdftxt}
+
+            Summary:";
 
         }
         catch (Exception ex)
@@ -46,16 +57,6 @@ public async Task<string> SummarizeFile(
         }
 
         // https://github.com/microsoft/semantic-kernel/blob/main/dotnet/samples/GettingStartedWithTextSearch/InMemoryVectorStoreFixture.cs#L139
-
-
-        // Create a prompt for the AI model.Instruct the model to summarize the provided text.
-        var prompt = @$"Summarize the following text concisely and accurately.
-            If the text is too short or doesn't contain meaningful information, state that.
-
-            Text to summarize:
-            {json_chunks?[0]}
-
-            Summary:";
 
         Console.WriteLine("Sending content to Ollama for summarization...");
 
