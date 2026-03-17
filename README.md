@@ -1,27 +1,35 @@
 # PDF_Llama
 
 This repository demonstrates using Ollama (local LLM) with Semantic Kernel 
-to summarize PDF collections and to generate embeddings. 
+to **summarize PDF documents** and generate embeddings from documents for future use. 
 
-## Usage scenario
+## Usage scenarios
 
-- Analyse organisations old PDF documents, creating embeddings for search and summarizing content.
-- Users can get insight of large document collection rapidly.
+- Analyse organisations PDF documents and create embeddings for search.
+- Document content summarisations.
+- Rapid insights of large PDF collections. Get informartion of individiual documents and sort PDF collections.
 
 ## Architecture
 
 Uses **plugin pattern** where the Kernel is injected into the plugin methods 
-if they require it. This allows the plugin to use the kernel's configured AI services.
+when required. 
+Allows the plugin to use the kernel's AI services as configured.
+PDFs read using PDFPig. Besides textual content, 
+Nice piggy gives us the ability to 
+AI analyse documents images, links and metadata.
 
 ### Future enhancements
 
 #### User definable analysis steps
-Target is to offer logical analysis steps for users who can create logical analysis sets.
-Steps can be defined using function invocation filters. For exsample, user might need to 
-opt in/out of certain analysis steps based on document type or content.
+Offer logical steps for users who create sets for analysis.
+Steps can be defined using function invocation filters. 
+Users are able to opt in/out of certain analysis steps 
+based on documents type or content. 
+For exsample: AI is instructed to exclude personal data from medical documents.
 
 #### Analysis sets
-Sets could be for finacial analysis, for organisations task and people history, set for product information etc.
+Sets could be for finacial analysis, for organisations task and people history. 
+Set to organise product information, other set to contain historical price fluctuations.
 
 
 ## Prerequisites
@@ -52,14 +60,14 @@ dotnet add package Microsoft.SemanticKernel
 dotnet build
 ```
 
-3. Run the sample that uses the summarizer (adjust program entry as needed):
+3. Run the sample that uses the summariser:
 
 ```bash
 dotnet run --project PDF_Llama.csproj
 ```
 
-## Notes
-- Will concentrate on speed, target is to AI analyse lots of PDFs; fast.
+## Footnotes
+
 - If you intentionally want to use an alternate Microsoft extension package, ensure you add the correct NuGet package that provides `Microsoft.Extensions.AI.Ollama` or update code to match available libraries.
 
 ## Common fix for CS0234
