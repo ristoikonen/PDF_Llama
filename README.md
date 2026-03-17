@@ -15,7 +15,7 @@ Uses **plugin pattern** where the Kernel is injected into the plugin methods
 when required. 
 Allows the plugin to use the kernel's AI services as configured.
 PDFs read using PDFPig. Besides textual content, 
-Nice piggy gives us the ability to 
+helpful piggy gives us the ability to 
 AI analyse documents images, links and metadata.
 
 ### Future enhancements
@@ -25,18 +25,22 @@ Offer logical steps for users who create sets for analysis.
 Steps can be defined using function invocation filters. 
 Users are able to opt in/out of certain analysis steps 
 based on documents type or content. 
-For exsample: AI is instructed to exclude personal data from medical documents.
+For exsample: 
+ - AI is instructed to exclude personal data from medical documents.
+ - Images are analysed for certain document types, such as marketing materials that contains certain product/object.
 
 #### Analysis sets
-Sets could be for finacial analysis, for organisations task and people history. 
-Set to organise product information, other set to contain historical price fluctuations.
+Sets could be for finacial analysis, for organisations task history. 
+Set of product information, set to contain historical price fluctuations.
 
+#### Add Aspire MCP
+Use Agents https://devblogs.microsoft.com/aspire/scaling-ai-agents-with-aspire-isolation.
 
 ## Prerequisites
 
 - .NET 10 SDK
 - Ollama installed and running locally (default endpoint `http://localhost:11434`).
-	- Download model, llama3.2 works ok. 
+	- Download model, llama3.2 works fine. 
 	- To download: `ollama pull llama3.2`
 - Ollama access, work in progress... Will decide between NuGet packages:
   - `OllamaSharp` or `Microsoft.AI.Extensions.Ollama`
