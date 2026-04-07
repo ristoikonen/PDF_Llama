@@ -31,15 +31,12 @@ public sealed class DotNetAI
     // Create a sample function tool that the agent can use.
     [Description("Get the weather for a given location.")]
     public static string GetWeather([Description("The location to get the weather for.")] string location)
-        => $"The weather in {location} is cloudy with a high of 15°C.";
+        => $"The weather in {location} is ...";
     //  = @"Describe your model and it's abilities"
 
-    public string GetLocalWeather(string location)
-    {
-        return GetWeather(location);
-    }
 
-    public async Task UseAgent(string question, string location)
+
+    public async Task UseAgent(string question)
     {
         // --- Configuration ---
         const string ollamaEndpoint = "http://localhost:11434";
@@ -47,15 +44,23 @@ public sealed class DotNetAI
 
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
 
+        var tool = AIFunctionFactory.Create(
+            (string location) => $"Data for {location}",
+            name: "get_location_data",
+            description: "Retrieves data for a specific location"
+        );
+     
+
         try
         {
             IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
 
-            //var gw =  GetWeather("");
-
             AIAgent agent = client.AsAIAgent(
                 instructions: "You are a helpful assistant running locally via Ollama."
-                , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]);
+               // , tools: [tool]
+               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
+                );
+                //, tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]);
 
 
             AgentSession session = await agent.CreateSessionAsync();
@@ -67,7 +72,7 @@ public sealed class DotNetAI
                 List<ChatMessage> userInputResponses = approvalRequests
                 .ConvertAll(functionApprovalRequest =>
                 {
-                    Console.WriteLine($"The agent would like to invoke the following function, please reply Y to approve: Name {((FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
+                    Console.WriteLine($"The agent would like to invoke the following function, please reply Y to approve: Location: {((FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"] } , Name {((FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
                     return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 

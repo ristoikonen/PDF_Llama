@@ -84,7 +84,7 @@ public class Program
 
             case "Use Agent":
                 DotNetAI.GetWeather("paris");
-                await dotnetai.UseAgent("what is the weather in paris","paris");
+                await dotnetai.UseAgent("what is the weather in madrid");
                 break;
 
             case "Get Response":
