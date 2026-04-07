@@ -30,6 +30,7 @@ public static class SpectreConsoleOutput
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
                 "PDF AI Summariser",
+                "Use Agent",
                 "Get Response",
                 "Generate image",
                 "IChatClient",

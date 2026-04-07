@@ -14,11 +14,17 @@ to **summarize PDF documents** and generate embeddings from documents for future
 Uses **plugin pattern** where the Kernel is injected into the plugin methods 
 when required. 
 Allows the plugin to use the kernel's AI services as configured.
-PDFs read using PDFPig. Besides textual content, 
-helpful piggy gives us the ability to 
+PDFs read using **PDFPig**. Besides textual content, 
+this helpful piggy gives us the ability to 
 AI analyse documents images, links and metadata.
 
+### Working on..
+Use features of new Microsoft Agent Framework Version 1.0.
+
+
 ### Future enhancements
+- Try Phi-4 Mini.
+- Try image gen and image analysis with Llama 3.2 Vision (11B) or similar
 
 #### User definable analysis steps
 Offer logical steps for users who create sets for analysis.

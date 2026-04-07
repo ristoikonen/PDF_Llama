@@ -81,6 +81,12 @@ public class Program
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
                 break;
+
+            case "Use Agent":
+                DotNetAI.GetWeather("paris");
+                await dotnetai.UseAgent("what is the weather in paris","paris");
+                break;
+
             case "Get Response":
                 await dotnetai.GetResponse("tell me about albert einstein");
                 break;
