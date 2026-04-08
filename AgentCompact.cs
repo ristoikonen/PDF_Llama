@@ -3,6 +3,7 @@ using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Compaction;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
+//using Newtonsoft.Json;
 using OllamaSharp;
 
 using Spectre.Console;
@@ -26,12 +27,32 @@ namespace PDF_Llama;
 public sealed class AgentStructuredOutput
 {
 
-    const string trees = @"
-ARGYLE APPLE - (Eucalyptus cinerea)
+    const string trees = @"ARGYLE APPLE - (Eucalyptus cinerea)
 A small to medium sized tree with a straight trunk but usually twisted branches. Its bark is coarse, stringy and reddish-brown.
 
 BLAKELYS RED GUM - (Eucalyptus blakelyi)
 A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short and stout. The bark is smooth with large irregular white, grey and reddish brown streaks but grey and scaly at the base of the tree. The bark sheds in large plates, revealing fresh colours beneath. Its juvenile leaves are ovate and blue-green, while the adult leaves are lance-shaped, dull bluish-green, and 6–20 cm long. Its clusters of 7–15 white flowers bloom from October to December. The tree was named after William Blakely, a prominent early 20th-century Australian botanist.
+Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.71.
+
+BRITTLE GUM - (Eucalyptus mannifera)
+A small to medium tree, 6 to 20 metres high with an erect trunk and drooping leaves. The bark is smooth, occasionally dimpled with rough patches on the lower part of the trunk which is mottled creamy-white to grey. It is often powdery to reddish before shedding in flakes. There are no sharply-edged ‘scribbles’. The adult has grey-green lance-like leaves that are alternately stalked. It flowers from February to April. Insects feed on its sweet exudate.
+
+Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.71.
+
+BROAD-LEAVED PEPPERMINT - (Eucalyptus dives)
+A small to medium-sized tree, 8 to 20 metres high with low branches. Its bark is grey, finely interlaced and crumbly fibrous. The leaves are stalked, alternate, thick, broad and lance-like. They are dark or grey-green and have a strong peppermint small when crushed. It flowers from October to November.
+
+Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.88.
+
+BUNDY - (Eucalyptus goniocalyx)
+A small low-branching tree, 8 to 16 metres, with a short crooked trunk and a spreading crown of longish leaves. Its bark is rough, grey-brown coarsely flaky or blocky on the trunk, sometimes thick and deeply fissured at its base. The leaves are stalked, alternate and lance-like. They are long, green and glossy. It flowers from March to August.
+
+Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.86.
+
+CANDLEBARK - (Eucalyptus rubida)
+An irregular tree, 10 to 25 metres high. Its bark is smooth, creamy-white with a red tinge in late summer. Often rough at the base with strips on the trunk. The leaves are stalked, grey-green and dull. It flowers from November to February.
+
+Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.66
 ";
 
 
@@ -44,15 +65,19 @@ A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short 
     {
 
         [JsonPropertyName("name")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Name { get; set; }
 
         [JsonPropertyName("latinname")]
-        public string? LatinName { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? NameInLatin { get; set; }
 
         [JsonPropertyName("sizeinmetres")]
-        public int? SizeInMetres { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? SizeInMetres { get; set; }
 
         [JsonPropertyName("description")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Description { get; set; }
     }
 
@@ -72,7 +97,7 @@ A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short 
        
         return new PlantInfo
         {
-            LatinName = latinname,
+            //LatinName = latinname,
             Name = name
         };
         //return Array.Empty<PlantInfo>();
@@ -99,7 +124,7 @@ A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short 
                 .AsAIAgent(
                 
                 name: "StructuredOutputAssistant",
-                description: "You are a helpful assistant that extracts structured information about plants like their name, latin name, size in metres and description."
+                description: "You are a helpful assistant that extracts structured information about plants like their name, plants name in latin, size in metres and description."
             
             );
 
@@ -109,9 +134,30 @@ A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short 
                 ResponseFormat = ChatResponseFormat.ForJsonSchema<PlantInfo[]>()
             };
 
-            AgentResponse<PlantInfo[]> response = await agent.RunAsync<PlantInfo[]>(trees, options: runOptions);
+            AgentResponse<PlantInfo[]> response = await agent.RunAsync<PlantInfo[]>(trees.Trim(), options: runOptions);
 
-            PlantInfo[] personInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text, JsonSerializerOptions.Web)!;
+
+            var data = new { Message = response.Text };
+            string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+
+
+            var jsonElement = JsonSerializer.Deserialize<JsonElement>(response.Text);
+
+            dynamic allItems = JsonSerializer.Deserialize<dynamic>(response.Text)!;
+
+            var res = response.Result;
+
+            if (response.Result is not null)
+            { 
+                PlantInfo[]? plInfos = response.Result.ToArray<PlantInfo>(); // JsonSerializer.Deserialize<PlantInfo[]>(response.Result)!;
+            }
+
+            PlantInfo[] plInfo = response.Result?.ToArray<PlantInfo>()!;
+
+            //PlantInfo[] plInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text)!;
+
+
+            // PlantInfo[] personInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text, JsonSerializerOptions.Web)!;
 
 
             //, chatoptions: options
@@ -167,6 +213,14 @@ A medium sized spreading tree, 10 to 24 metres high. Its trunk is usually short 
             };
 
             AgentResponse response2 = await agent.RunAsync( trees, options: runOptions2);
+
+            //var data = new { Message = response2.Text };
+            //string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+
+
+            //var jsonElement = JsonSerializer.Deserialize<JsonElement>(response2.Text);
+
+            //PlantInfo[] plInfo = JsonSerializer.Deserialize<PlantInfo[]>(response2.Text)!;
 
             PlantInfo[] pInfo = JsonSerializer.Deserialize<PlantInfo[]>(response2.Text, JsonSerializerOptions.Web)!;
             
