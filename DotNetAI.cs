@@ -1,4 +1,5 @@
-﻿using Microsoft.Agents.AI;
+﻿using Azure.AI.OpenAI;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using OpenAI.Chat;
 //using Microsoft.Extensions.AI.Ollama;
@@ -6,6 +7,8 @@ using OpenAI.Chat;
 //using OllamaSharp.Models;
 using OpenAI.Images;
 using System.ComponentModel;
+using System.Net;
+using System.Security.Cryptography;
 using System.Text.Json;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 
@@ -53,17 +56,28 @@ public sealed class DotNetAI
 
         try
         {
-            IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
                 instructions: "You are a helpful assistant running locally via Ollama."
                // , tools: [tool]
                , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
                 );
-                //, tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]);
-
+            //, tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]);
 
             AgentSession session = await agent.CreateSessionAsync();
+
+            // First turn
+            Console.WriteLine(await agent.RunAsync("My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
+            
+            // Second turn — the agent remembers the user's name and hobby
+            //Console.WriteLine(await agent.RunAsync("What do you remember about me?", session));
+
+            await foreach (var update in agent.RunStreamingAsync("List things i could potetially do and like.", session))
+            {
+                Console.WriteLine(update);
+            }
+
             AgentResponse response = await agent.RunAsync(question, session);
             List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
 
@@ -84,6 +98,63 @@ public sealed class DotNetAI
             Console.WriteLine($"\nAgent: {response}");
 
             //Console.WriteLine(await agent.RunAsync(question));  
+
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+    }
+
+    public async Task Conversation(string conversation_starter)
+    {
+        // --- Configuration ---
+        const string ollamaEndpoint = "http://localhost:11434";
+        const string ollamaModel = "llama3.2";
+
+        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
+
+
+        ////    AIAgent agent = new AzureOpenAIClient(
+        ////new Uri(endpoint),
+        ////new DefaultAzureCredential())
+        ////.GetChatClient(deploymentName)
+        ////.AsAIAgent(instructions: "You are good at telling jokes.", name: "Joker");
+
+
+        try
+        {
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            AIAgent agent = client.AsAIAgent(
+                instructions: "You are a helpful personal assistant running locally via Ollama.",
+                name: "Jeeves"
+                );
+
+
+
+            AgentSession session = await agent.CreateSessionAsync();
+
+
+            Console.WriteLine(await agent.RunAsync("My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
+
+
+            Console.WriteLine(await agent.RunAsync("List things I could like.", session));
+
+            //Optional streaming response
+            /*
+            await foreach (var update in agent.RunStreamingAsync("List things i could potetially do and like.", session))
+            {
+                Console.WriteLine(update);
+            }
+            */
+
+            //var deserializedSession = await agent.DeserializeSessionAsync(session);
 
 
         }

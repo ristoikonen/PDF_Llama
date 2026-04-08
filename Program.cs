@@ -71,6 +71,7 @@ public class Program
         var scenario = scenarios[0];
 
         DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName);
+        AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
 
         // present
         switch (scenario)
@@ -80,6 +81,15 @@ public class Program
             case "PDF AI Summariser":
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
+                break;
+                
+             case "Structured":
+                await agent_struct.Run();
+                break;
+
+            case "Conversation":
+                //TODO: Use params
+                await dotnetai.Conversation("");
                 break;
 
             case "Use Agent":

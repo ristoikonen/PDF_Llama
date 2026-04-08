@@ -1,8 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Drawing;
-//using Microsoft.Extensions.CommandLineUtils;
+﻿//using Microsoft.Extensions.CommandLineUtils;
 using OllamaSharp.Models.Chat;
 using Spectre.Console;
+using System.Collections.Generic;
+using System.Drawing;
+using UglyToad.PdfPig;
 
 namespace PDF_Llama;
 
@@ -30,6 +31,8 @@ public static class SpectreConsoleOutput
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
                 "PDF AI Summariser",
+                "Structured",
+                "Conversation",
                 "Use Agent",
                 "Get Response",
                 "Generate image",
