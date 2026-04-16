@@ -82,8 +82,18 @@ public class Program
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
                 break;
-                
-             case "Structured":
+
+            case "Store Embedding":
+                ReadOnlyMemory<float> embedding = null;
+                await dotnetai.GenerateEmbedding();
+                //await dotnetai.StoreEmbedding(embedding, "Get oil price.");
+                break;
+
+            case "Oil Price Agent":
+                await dotnetai.UseOilAgent("Get oil price.");
+                break;
+
+            case "Structured":
                 await agent_struct.Run();
                 break;
 
@@ -270,7 +280,7 @@ public class Program
         return await Task.FromResult<StartMeUps>(new StartMeUps
         {
             ModelEndpoint = new Uri("http://localhost:11434"),
-            ModelName = "llama3.2" // "mistral"  "deepseek-r1:1.5b"
+            ModelName = "qwen3-embedding:0.6b" //"llama3.2" // "mistral"  "deepseek-r1:1.5b"
         });
     }
 

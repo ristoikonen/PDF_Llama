@@ -1,11 +1,18 @@
 ﻿using Azure.AI.OpenAI;
 using Microsoft.Agents.AI;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.VectorData;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.SqliteVec;
+using OllamaSharp;
+using OllamaSharp.Models;
 using OpenAI.Chat;
 //using Microsoft.Extensions.AI.Ollama;
 //using OllamaSharp;
 //using OllamaSharp.Models;
 using OpenAI.Images;
+using System.Collections;
 using System.ComponentModel;
 using System.Net;
 using System.Security.Cryptography;
@@ -26,24 +33,103 @@ public sealed class DotNetAI
         this.ModelName = modelName;
     }
 
-
-
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
 
-
-    // Create a sample function tool that the agent can use.
     [Description("Get the weather for a given location.")]
     public static string GetWeather([Description("The location to get the weather for.")] string location)
         => $"The weather in {location} is ...";
     //  = @"Describe your model and it's abilities"
 
 
+    [Description("Get the oil price per barrel in USD.")]
+    public static string GetOilBarrelPrice([Description("Gets current oli price per barrel.")] string price)
+        => $"The oil price is {price}.";
+
+
+    [Description("Get the oli price per barrel in USD.")]
+    public static Delegate getOilPrice = (AIFunctionArguments args) =>
+    {
+        // Access named parameters from the arguments dictionary.
+        string? price = args.TryGetValue("price", out object? loc) ? loc?.ToString() : "$";
+        string? units = args.TryGetValue("units", out object? u) ? u?.ToString() : "barrel";
+
+        return $"Oli price in {units}: 101{price}";
+    };
+
+    // Create the AIFunction.
+    public static AIFunction getOil = AIFunctionFactory.Create(getOilPrice);
+
+    public async Task UseOilAgent(string question)
+    {
+        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
+
+        try
+        {
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            // running locally via Ollama
+
+            AIAgent agent = client.AsAIAgent(
+                instructions: "You are a helpful assistant finding current oil price in USD."
+               // , tools: [tool]
+               , tools: [AIFunctionFactory.Create(getOilPrice)]
+                );
+
+            Console.WriteLine(await agent.RunAsync("Find oli price per barrel."));
+
+            AgentSession session = await agent.CreateSessionAsync();
+
+            // First turn
+            Console.WriteLine(await agent.RunAsync("Find oli price per barrel.", session));
+
+
+            AIAgent agentoil = client.AsAIAgent(
+                instructions: "You are a helpful assistant running finding current oil price."
+               , tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
+                );
+
+            Console.WriteLine(await agentoil.RunAsync("Find oli price per barrel."));
+
+
+            AgentResponse response = await agent.RunAsync(question, session);
+
+            List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
+
+            while (approvalRequests.Count > 0)
+            {
+                List<ChatMessage> userInputResponses = approvalRequests
+                .ConvertAll(functionApprovalRequest =>
+                {
+                    Console.WriteLine($"The agent would like to invoke the following function, please reply Y to approve: " +
+                        $"Location: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"]} , " +
+                        $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
+                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
+                });
+
+                response = await agent.RunAsync(userInputResponses, session);
+
+                approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
+            }
+
+            Console.WriteLine($"\nAgent: {response}");
+
+            //Console.WriteLine(await agent.RunAsync(question));  
+
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            //Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+    }
+
 
     public async Task UseAgent(string question)
     {
-        // --- Configuration ---
-        const string ollamaEndpoint = "http://localhost:11434";
-        const string ollamaModel = "llama3.2";
 
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
 
@@ -62,8 +148,7 @@ public sealed class DotNetAI
                 instructions: "You are a helpful assistant running locally via Ollama."
                // , tools: [tool]
                , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
-                );
-            //, tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]);
+            );
 
             AgentSession session = await agent.CreateSessionAsync();
 
@@ -86,7 +171,12 @@ public sealed class DotNetAI
                 List<ChatMessage> userInputResponses = approvalRequests
                 .ConvertAll(functionApprovalRequest =>
                 {
-                    Console.WriteLine($"The agent would like to invoke the following function, please reply Y to approve: Location: {((FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"] } , Name {((FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
+                    //Microsoft.Extensions.AI.FunctionCallContent functionCall = (Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall;
+
+                    Console.WriteLine(
+                        $"The agent would like to invoke the following function, please reply Y to approve: " +
+                        $"Location: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"] } , " +
+                        $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
                     return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
@@ -96,20 +186,60 @@ public sealed class DotNetAI
             }
 
             Console.WriteLine($"\nAgent: {response}");
-
-            //Console.WriteLine(await agent.RunAsync(question));  
-
-
         }
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
             Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
         }
-
         Console.WriteLine("Press any key to exit.");
     }
+
+
+
+    //
+    //
+    // ------- SQlLite ------------------------
+    //
+    //
+
+    // Store the embedding in a local SQLite
+    public async Task StoreEmbedding(ReadOnlyMemory<float> embedding, string collectionName)
+    {
+    
+
+        // 1. Create the connection
+        var connection = new SqliteConnection("Data Source=pdfvec.db");
+        await connection.OpenAsync();
+
+        // 2. Initialize the SQLite Vector Store
+        var vectorStore = new SqliteVectorStore("Data Source=pdfvec.db");
+        var collection = vectorStore.GetCollection<string, DocumentChunk>(collectionName);
+
+        // 3. Ensure the table and vector index exist
+        await collection.EnsureCollectionExistsAsync();
+
+        // 4. Save a record (assuming 'embedding' was generated via Ollama/Qwen3)
+        var chunk = new DocumentChunk
+        {
+            Text = collectionName,
+            Vector = embedding,
+            //TODO: Add PDFs filename
+            FileName = collectionName
+        };
+
+        await collection.UpsertAsync(chunk);
+
+
+    }
+
+
+    //
+    //
+    // --------EO SQLLite ---------------------
+    //
+    //
+
 
     public async Task Conversation(string conversation_starter)
     {
@@ -231,6 +361,124 @@ public sealed class DotNetAI
 
         Console.WriteLine("Press any key to exit.");
     }
+
+
+
+
+
+
+
+
+
+
+    public async Task GenerateEmbedding(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
+    {
+        
+        Console.WriteLine("Setting up Semantic Kernel with Ollama...");
+
+        try
+        {
+            // 1024
+
+            var options = new EmbeddingGenerationOptions { Dimensions = 1024 };
+
+            IEmbeddingGenerator<string, Embedding<float>> generator = new OllamaEmbeddingGenerator(ModelEndpoint, ModelName);
+            // 2. Generate embedding for a single string
+            var text = "Hello, world!";
+            var embeddings = await generator.GenerateAsync([text],options);
+
+            // 3. Extract the vector data
+            var vector = embeddings[0].Vector;
+
+            Console.WriteLine(vector.Length);
+
+            //StoreEmbedding(vector, "arcdoc").Wait();
+            // 1. Create the connection
+            var connection = new SqliteConnection("Data Source=pdfvec.db");
+            await connection.OpenAsync();
+
+            // 2. Initialize the SQLite Vector Store
+            var vectorStore = new SqliteVectorStore("Data Source=pdfvec.db");
+            var collection = vectorStore.GetCollection<string, DocumentChunk>("pdfdoc");
+
+            byte[] vectorBytes = FloatArrayToBytes(vector.ToArray());
+
+            // 3. Ensure the table and vector index exist
+            await collection.EnsureCollectionExistsAsync();
+
+            // 4. Save a record (assuming 'embedding' was generated via Ollama/Qwen3)
+            var chunk = new DocumentChunk
+            {
+                Text = "arcdoc",
+                Vector = vector,
+                //TODO: Add PDFs filename
+                FileName = "arcdoc"
+            };
+
+
+            // 4. Store in SQLite
+            using (var insertCmd = new SQLiteCommand("INSERT INTO embeddings (text, vector) VALUES (@text, @vector)", conn))
+            {
+                insertCmd.Parameters.AddWithValue("@text", text);
+                insertCmd.Parameters.AddWithValue("@vector", vectorBytes);
+                insertCmd.ExecuteNonQuery();
+            }
+
+            await collection.UpsertAsync(chunk);
+
+            Console.WriteLine(chunk.Vector.Length);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            Console.WriteLine($"Check your Ollama endpoint: {ModelEndpoint.AbsoluteUri} and model: {ModelName}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+    }
+
+
+    // Helper: Convert float[] to byte[]
+    static byte[] FloatArrayToBytes(float[] array)
+    {
+        byte[] bytes = new byte[array.Length * sizeof(float)];
+        Buffer.BlockCopy(array, 0, bytes, 0, bytes.Length);
+        return bytes;
+    }
+
+    // Helper: Convert byte[] to float[]
+    static float[] BytesToFloatArray(byte[] bytes)
+    {
+        float[] array = new float[bytes.Length / sizeof(float)];
+        Buffer.BlockCopy(bytes, 0, array, 0, bytes.Length);
+        return array;
+    }
+    static float[] BytesToFloatArray(byte[] bytes)
+    {
+        float[] array = new float[bytes.Length / sizeof(float)];
+        Buffer.BlockCopy(bytes, 0, array, 0, bytes.Length);
+        return array;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #pragma warning restore MEAI001
 

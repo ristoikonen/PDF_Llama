@@ -31,6 +31,8 @@ public static class SpectreConsoleOutput
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
                 "PDF AI Summariser",
+                "Store Embedding",
+                "Oil Price Agent",
                 "Structured",
                 "Conversation",
                 "Use Agent",
