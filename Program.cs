@@ -104,7 +104,7 @@ public class Program
 
             case "Use Agent":
                 DotNetAI.GetWeather("paris");
-                await dotnetai.UseAgent("what is the weather in madrid");
+                await dotnetai.UseAgent("what is price of coin id value of 90?");
                 break;
 
             case "Get Response":
@@ -280,8 +280,10 @@ public class Program
         return await Task.FromResult<StartMeUps>(new StartMeUps
         {
             ModelEndpoint = new Uri("http://localhost:11434"),
-            ModelName = "qwen3-embedding:0.6b" //"llama3.2" // "mistral"  "deepseek-r1:1.5b"
+            ModelName = "llama3.2"
         });
+
+        //"qwen3-embedding:0.6b" //"llama3.2" // "mistral"  "deepseek-r1:1.5b"
     }
 
 }

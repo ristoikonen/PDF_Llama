@@ -17,6 +17,8 @@ using System.ComponentModel;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Net.Http.Json;
+
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 
 namespace PDF_Llama;
@@ -27,6 +29,18 @@ public sealed class DotNetAI
     public Uri ModelEndpoint { get; set; }
     public string ModelName { get; set; }
 
+    //record PriceResult(decimal Price);
+
+    record PriceResult
+    {
+        public decimal id { get; init; }
+        public string? name { get; init; }
+        public string? symbol { get; init; }
+        public string? price_us { get; init; }
+        public string? percent_change_1h { get; init; }     
+        public string? percent_change_24h { get; init; }
+    }
+
     public DotNetAI(Uri modelEndpoint, string modelName)
     {
         this.ModelEndpoint = modelEndpoint;
@@ -34,6 +48,31 @@ public sealed class DotNetAI
     }
 
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
+
+
+    [Description("Fetches the current price of a cryptocurrency by id.Bitcoin is 90. ETH is 80.")]
+    public static async Task<string> GetCryptoPrice(
+        [Description("Cryptocurrency symbol, e.g. 'BTC', 'ETH'")] string id,
+        HttpClient httpClient)
+    {
+        try
+        {
+            // Example: replace with a real provider
+            var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
+            var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+            return result is not null
+                ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
+                : $"Price for {id} not available.";
+        }
+        catch (Exception ex)
+        {
+            return $"Failed to retrieve price for {id}: {ex.Message}";
+        }
+    }
+
+
+
+
 
     [Description("Get the weather for a given location.")]
     public static string GetWeather([Description("The location to get the weather for.")] string location)
@@ -133,35 +172,64 @@ public sealed class DotNetAI
 
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
 
-        var tool = AIFunctionFactory.Create(
-            (string location) => $"Data for {location}",
-            name: "get_location_data",
-            description: "Retrieves data for a specific location"
-        );
+        //var tool = AIFunctionFactory.Create(
+        //    (string location) => $"Data for {location}",
+        //    name: "get_location_data",
+        //    description: "Retrieves data for a specific location"
+        //);
      
 
         try
         {
+
+            var httpClient = new HttpClient();
+    
+            var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var content = await httpClient.GetStringAsync(url);
+
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+
+            PriceResult? user2 = JsonSerializer.Deserialize<PriceResult>(content,options);
+
+
+            
+
+            var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+            Console.WriteLine( result);
+    
+
+
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
-                instructions: "You are a helpful assistant running locally via Ollama."
+                instructions: "You are a helpful assistant passing 90 as id for GetCryptoPrice function."
                // , tools: [tool]
-               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
+               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetCryptoPrice))]
             );
 
+
+            //AIAgent agent = client.AsAIAgent(
+            //    instructions: "You are a helpful assistant running locally via Ollama."
+            //   // , tools: [tool]
+            //   , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
+            //);
+
             AgentSession session = await agent.CreateSessionAsync();
+            
+            /*
 
             // First turn
-            Console.WriteLine(await agent.RunAsync("My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
-            
-            // Second turn — the agent remembers the user's name and hobby
-            //Console.WriteLine(await agent.RunAsync("What do you remember about me?", session));
+            Console.WriteLine(await agent.RunAsync("Get Bitcoin price from Coinlore api")); // My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
 
-            await foreach (var update in agent.RunStreamingAsync("List things i could potetially do and like.", session))
+            await foreach (var update in agent.RunStreamingAsync("List price.", session))
             {
                 Console.WriteLine(update);
             }
+            
+             */
 
             AgentResponse response = await agent.RunAsync(question, session);
             List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
@@ -174,10 +242,10 @@ public sealed class DotNetAI
                     //Microsoft.Extensions.AI.FunctionCallContent functionCall = (Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall;
 
                     Console.WriteLine(
-                        $"The agent would like to invoke the following function, please reply Y to approve: " +
-                        $"Location: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"] } , " +
+                        $"The agent would like to invoke the following function, please pass  id to approve: " +
+                        $"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
                         $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
-                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
+                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("90", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
                 response = await agent.RunAsync(userInputResponses, session);
@@ -416,13 +484,13 @@ public sealed class DotNetAI
             };
 
 
-            // 4. Store in SQLite
-            using (var insertCmd = new SQLiteCommand("INSERT INTO embeddings (text, vector) VALUES (@text, @vector)", conn))
-            {
-                insertCmd.Parameters.AddWithValue("@text", text);
-                insertCmd.Parameters.AddWithValue("@vector", vectorBytes);
-                insertCmd.ExecuteNonQuery();
-            }
+            //// 4. Store in SQLite
+            //using (var insertCmd = new SQLiteCommand("INSERT INTO embeddings (text, vector) VALUES (@text, @vector)", conn))
+            //{
+            //    insertCmd.Parameters.AddWithValue("@text", text);
+            //    insertCmd.Parameters.AddWithValue("@vector", vectorBytes);
+            //    insertCmd.ExecuteNonQuery();
+            //}
 
             await collection.UpsertAsync(chunk);
 
@@ -449,12 +517,6 @@ public sealed class DotNetAI
     }
 
     // Helper: Convert byte[] to float[]
-    static float[] BytesToFloatArray(byte[] bytes)
-    {
-        float[] array = new float[bytes.Length / sizeof(float)];
-        Buffer.BlockCopy(bytes, 0, array, 0, bytes.Length);
-        return array;
-    }
     static float[] BytesToFloatArray(byte[] bytes)
     {
         float[] array = new float[bytes.Length / sizeof(float)];
