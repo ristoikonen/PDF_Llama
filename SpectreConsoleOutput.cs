@@ -30,15 +30,16 @@ public static class SpectreConsoleOutput
                     "[grey](Press [blue]<space>[/] to toggle a scenario, " +
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
-                "PDF AI Summariser",
-                "Store Embedding",
-                "Oil Price Agent",
-                "Structured",
-                "Conversation",
-                "Use Agent",
-                "Get Response",
-                "Generate image",
-                "IChatClient",
+                    "PDF AI Summariser",
+                    "Long Agent Task",
+                    "Store Embedding",
+                    "Oil Price Agent",
+                    "Structured",
+                    "Conversation",
+                    "Use Agent",
+                    "Get Response",
+                    "Generate image",
+                    "IChatClient",
                     })
                 //.AddChoiceGroup("Chats", new[]
                 //    {"IChatClient ",

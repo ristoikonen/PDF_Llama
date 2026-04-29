@@ -1,6 +1,10 @@
 ﻿using Microsoft.SemanticKernel;
 using PdfReader;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
+using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
 
 

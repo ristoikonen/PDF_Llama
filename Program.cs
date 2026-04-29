@@ -3,8 +3,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using OllamaSharp;
 using Spectre.Console;
+using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Dynamic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using static System.Net.Mime.MediaTypeNames;
 
 
@@ -83,6 +88,12 @@ public class Program
                 await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
                 break;
 
+            case "Long Agent Task":
+                string book = System.IO.File.ReadAllText(@"C:\tmp\BooklInstructionS2.txt");
+                //await dotnetai.RunLongAgent($"Write booklet of about 25 pages that tutors student to pass AZ-900 'Azure Fundamentals' test. Write a paragraph per number: {book}");
+                await dotnetai.RunLongAgent($"GENERATE QUESTIONS WITH ANSWERS FOR studentS to TRAIN FOR AZ-900 'Azure Fundamentals' test. CREATE ONE QUOESTION PER NUMBERED CAPTION: {book}");
+                break;
+
             case "Store Embedding":
                 ReadOnlyMemory<float> embedding = null;
                 await dotnetai.GenerateEmbedding();
@@ -94,7 +105,7 @@ public class Program
                 break;
 
             case "Structured":
-                await agent_struct.Run();
+                await agent_struct.RunAgent();
                 break;
 
             case "Conversation":

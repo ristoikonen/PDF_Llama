@@ -20,8 +20,15 @@ using System.Text.Json;
 using System.Net.Http.Json;
 
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
+using System;
+using System.Net.Http;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace PDF_Llama;
+
+#pragma warning disable MEAI001
 
 public sealed class DotNetAI
 {
@@ -33,7 +40,7 @@ public sealed class DotNetAI
 
     record PriceResult
     {
-        public decimal id { get; init; }
+        public string? id { get; init; }
         public string? name { get; init; }
         public string? symbol { get; init; }
         public string? price_us { get; init; }
@@ -58,11 +65,32 @@ public sealed class DotNetAI
         try
         {
             // Example: replace with a real provider
-            var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
-            var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
-            return result is not null
-                ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
-                : $"Price for {id} not available.";
+            //var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
+            PriceResult? pr = null;
+
+            var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var content = await httpClient.GetStringAsync(url);
+
+            //var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+            foreach (var element in list!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element);
+                //Console.WriteLine(element.GetProperty("price_us").GetString());
+            }
+
+            return pr.price_us ?? "";
+
+            //var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+            //return result is not null
+            //    ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
+            //    : $"Price for {id} not available.";
         }
         catch (Exception ex)
         {
@@ -166,6 +194,68 @@ public sealed class DotNetAI
         Console.WriteLine("Press any key to exit.");
     }
 
+    //
+    
+        
+        //WriteAllText(@"C:\tmp\agent_response.txt", instructions + Environment.NewLine + response.ToString());
+    // BooklInstructions.txt: "Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test"
+
+    // USAGE:
+    // await dotnetai.RunLongAgent(@"Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test");
+    public async Task RunLongAgent(string instructions)
+    {
+        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
+
+        try
+        {
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            AIAgent agent = client.AsAIAgent(
+                instructions: instructions
+                //, tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
+                );
+
+            AgentRunOptions options = new()
+            {
+                AllowBackgroundResponses = true
+                //,AdditionalProperties = { "response_mode" = "streaming" } // Enable streaming responses
+            };  
+
+            AgentSession session = await agent.CreateSessionAsync();
+
+            // Get initial response - may return with or without a continuation token
+            AgentResponse response = await agent.RunAsync(instructions, session, options);
+
+            Console.WriteLine($"Initial response: {DateTime.Now.ToShortTimeString}");
+
+            // Continue to poll until the final response is received
+            while (response.ContinuationToken is not null)
+            {
+                // Wait before polling again.
+                await Task.Delay(TimeSpan.FromSeconds(2));
+
+                options.ContinuationToken = response.ContinuationToken;
+                response = await agent.RunAsync(session, options);
+            }
+
+            System.IO.File.WriteAllText(@"C:\tmp\agent_response2NEW.txt", instructions + Environment.NewLine + response.Text);
+
+            Console.WriteLine($"Response: {DateTime.Now.ToShortTimeString}");
+            Console.WriteLine(response.Text);
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            //Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+    }
+
+
+
 
     public async Task UseAgent(string question)
     {
@@ -183,7 +273,9 @@ public sealed class DotNetAI
         {
 
             var httpClient = new HttpClient();
-    
+            PriceResult? pr = null;
+
+
             var url = $"https://api.coinlore.net/api/ticker/?id=90";
 
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
@@ -192,13 +284,28 @@ public sealed class DotNetAI
 
             dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
 
-            PriceResult? user2 = JsonSerializer.Deserialize<PriceResult>(content,options);
+            //&& obj is Array
+
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+            foreach (var element in list!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element);
+                //Console.WriteLine(element.GetProperty("price_us").GetString());
+            }
+
+
+            //if (obj is not null )
+            //{ 
+            //    string? name = obj["id"].ToString();
+            //}
+
+            //PriceResult? user2 = JsonSerializer.Deserialize<PriceResult>(content,options);
 
 
             
 
-            var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
-            Console.WriteLine( result);
+            ////var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+           // Console.WriteLine( result);
     
 
 

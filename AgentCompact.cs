@@ -12,10 +12,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Net;
+using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 
 namespace PDF_Llama;
@@ -104,7 +106,7 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
     }
 
 
-    public async Task Run()
+    public async Task RunAgent()
     {
         try { 
 
@@ -147,12 +149,12 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
 
             var res = response.Result;
 
-            if (response.Result is not null)
-            { 
-                PlantInfo[]? plInfos = response.Result.ToArray<PlantInfo>(); // JsonSerializer.Deserialize<PlantInfo[]>(response.Result)!;
-            }
+            //if (response.Result is not null)
+            //{ 
+               // PlantInfo[]? plInfos = response.Result.ToArray<PlantInfo>(); // JsonSerializer.Deserialize<PlantInfo[]>(response.Result)!;
+            //}
 
-            PlantInfo[] plInfo = response.Result?.ToArray<PlantInfo>()!;
+            //PlantInfo[] plInfo = response.Result?.ToArray<PlantInfo>()!;
 
             //PlantInfo[] plInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text)!;
 
