@@ -43,7 +43,7 @@ public sealed class DotNetAI
         public string? id { get; init; }
         public string? name { get; init; }
         public string? symbol { get; init; }
-        public string? price_us { get; init; }
+        public string? price_usd { get; init; }
         public string? percent_change_1h { get; init; }     
         public string? percent_change_24h { get; init; }
     }
@@ -57,9 +57,9 @@ public sealed class DotNetAI
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
 
 
-    [Description("Fetches the current price of a cryptocurrency by id.Bitcoin is 90. ETH is 80.")]
-    public static async Task<string> GetCryptoPrice(
-        [Description("Cryptocurrency symbol, e.g. 'BTC', 'ETH'")] string id,
+    [Description("Fetches the current price of a Bitcoin.")]
+    public static async Task<string> GetBitcoinPrice(
+        //[Description("Cryptocurrency symbol, e.g. 'BTC', 'ETH'")] string id,
         HttpClient httpClient)
     {
         try
@@ -82,19 +82,19 @@ public sealed class DotNetAI
             foreach (var element in list!)
             {
                 pr = JsonSerializer.Deserialize<PriceResult>(element);
+                return pr?.price_usd ?? "0";
                 //Console.WriteLine(element.GetProperty("price_us").GetString());
             }
 
-            return pr.price_us ?? "";
+            return "0";
 
-            //var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
             //return result is not null
             //    ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
             //    : $"Price for {id} not available.";
         }
         catch (Exception ex)
         {
-            return $"Failed to retrieve price for {id}: {ex.Message}";
+            return $"Failed to retrieve price : {ex.Message}";
         }
     }
 
@@ -254,90 +254,48 @@ public sealed class DotNetAI
         Console.WriteLine("Press any key to exit.");
     }
 
-
-
-
     public async Task UseAgent(string question)
     {
-
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
-
-        //var tool = AIFunctionFactory.Create(
-        //    (string location) => $"Data for {location}",
-        //    name: "get_location_data",
-        //    description: "Retrieves data for a specific location"
-        //);
-     
 
         try
         {
 
-            var httpClient = new HttpClient();
-            PriceResult? pr = null;
+        //    var httpClient = new HttpClient();
+        //    PriceResult? pr = null;
 
+        //    var url = $"https://api.coinlore.net/api/ticker/?id=90";
 
-            var url = $"https://api.coinlore.net/api/ticker/?id=90";
+        //    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        //    var content = await httpClient.GetStringAsync(url);
 
-            var content = await httpClient.GetStringAsync(url);
+        //    dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
 
-            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+        //    var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+        //    foreach (var element in list!)
+        //    {
+        //        pr = JsonSerializer.Deserialize<PriceResult>(element);
+        //        if (pr is not null)
+        //        {
+        //            string price = pr.price_usd ?? "0";
+        //            Console.WriteLine(price);
 
-            //&& obj is Array
-
-            var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
-            foreach (var element in list!)
-            {
-                pr = JsonSerializer.Deserialize<PriceResult>(element);
-                //Console.WriteLine(element.GetProperty("price_us").GetString());
-            }
-
-
-            //if (obj is not null )
-            //{ 
-            //    string? name = obj["id"].ToString();
-            //}
-
-            //PriceResult? user2 = JsonSerializer.Deserialize<PriceResult>(content,options);
-
-
-            
-
-            ////var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
-           // Console.WriteLine( result);
-    
-
+        //        }
+        //        //Console.WriteLine(element.GetProperty("price_us").GetString());
+        //    }
 
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
-                instructions: "You are a helpful assistant passing 90 as id for GetCryptoPrice function."
+                instructions: "You are a helpful assistant getting latest Bitcoin price using AI Function GetBitcoinPrice."
                // , tools: [tool]
-               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetCryptoPrice))]
+               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetBitcoinPrice))]
             );
 
 
-            //AIAgent agent = client.AsAIAgent(
-            //    instructions: "You are a helpful assistant running locally via Ollama."
-            //   // , tools: [tool]
-            //   , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetWeather))]
-            //);
-
             AgentSession session = await agent.CreateSessionAsync();
             
-            /*
-
-            // First turn
-            Console.WriteLine(await agent.RunAsync("Get Bitcoin price from Coinlore api")); // My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
-
-            await foreach (var update in agent.RunStreamingAsync("List price.", session))
-            {
-                Console.WriteLine(update);
-            }
-            
-             */
-
             AgentResponse response = await agent.RunAsync(question, session);
             List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
 
@@ -349,10 +307,10 @@ public sealed class DotNetAI
                     //Microsoft.Extensions.AI.FunctionCallContent functionCall = (Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall;
 
                     Console.WriteLine(
-                        $"The agent would like to invoke the following function, please pass  id to approve: " +
-                        $"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
+                        $"The agent would like to invoke the following function: " +
+                        //$"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
                         $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
-                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("90", StringComparison.OrdinalIgnoreCase) ?? false)]);
+                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
                 response = await agent.RunAsync(userInputResponses, session);

@@ -115,7 +115,7 @@ public class Program
 
             case "Use Agent":
                 DotNetAI.GetWeather("paris");
-                await dotnetai.UseAgent("what is price of coin id value of 90?");
+                await dotnetai.UseAgent("what is price of bitcoin?");
                 break;
 
             case "Get Response":
