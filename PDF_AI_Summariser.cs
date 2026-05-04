@@ -10,9 +10,9 @@ using System.Threading.Tasks;
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
-public sealed class PDF_AI_Summariser
+public sealed class PDF_AI_Summariser : IOllamaBase
 {
     public Uri ModelEndpoint { get; set; }
     public string ModelName { get; set; }

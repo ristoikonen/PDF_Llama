@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
 
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 internal class PdfContentPlugin
 {

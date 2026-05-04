@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 #pragma warning disable MEAI001
 
@@ -150,12 +150,12 @@ public sealed class DotNetAI
             Console.WriteLine(await agent.RunAsync("Find oli price per barrel.", session));
 
 
-            AIAgent agentoil = client.AsAIAgent(
-                instructions: "You are a helpful assistant running finding current oil price."
-               , tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
-                );
+            //AIAgent agentoil = client.AsAIAgent(
+            //    instructions: "You are a helpful assistant running finding current oil price."
+            //   , tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
+            //    );
 
-            Console.WriteLine(await agentoil.RunAsync("Find oli price per barrel."));
+            //Console.WriteLine(await agentoil.RunAsync("Find oli price per barrel."));
 
 
             AgentResponse response = await agent.RunAsync(question, session);

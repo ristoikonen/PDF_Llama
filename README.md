@@ -1,6 +1,7 @@
-# PDF_Llama
+# Agent_Llama
+##### Based on PDF_Llama solution, uses Microsoft Agent Framework.
 
-This repository demonstrates using Ollama (local LLM) with Semantic Kernel 
+This repository demonstrates using Ollama (local LLM) with Microsoft Agent Framework 
 to **summarize PDF documents** and generate embeddings from documents for future use. 
 
 ## Usage scenarios
@@ -18,13 +19,10 @@ PDFs read using **PDFPig**. Besides textual content,
 this helpful piggy gives us the ability to 
 AI analyse documents images, links and metadata.
 
-### Working on..
-Use features of new Microsoft Agent Framework Version 1.0.
-
+### Working on atm...
+- Use gemma3:4b model to add image analysis
 
 ### Future enhancements
-- Try Phi-4 Mini.
-- Try image gen and image analysis with Llama 3.2 Vision (11B) or similar
 
 #### User definable analysis steps
 Offer logical steps for users who create sets for analysis.

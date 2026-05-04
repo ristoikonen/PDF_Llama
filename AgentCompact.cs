@@ -20,7 +20,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 // Suppress MEAI001 diagnostic for evaluation-only API usage
 #pragma warning disable MEAI001

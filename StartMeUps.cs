@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 public interface IStartMeUps
 {

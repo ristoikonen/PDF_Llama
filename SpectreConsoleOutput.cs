@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using UglyToad.PdfPig;
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 //public class Settings : CommandSettings
 //{
@@ -30,6 +30,8 @@ public static class SpectreConsoleOutput
                     "[grey](Press [blue]<space>[/] to toggle a scenario, " +
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
+                    "Nested",
+                    "AtoA",
                     "PDF AI Summariser",
                     "Long Agent Task",
                     "Store Embedding",

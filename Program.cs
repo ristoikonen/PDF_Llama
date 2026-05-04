@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.AI;
+﻿using A2A;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using OllamaSharp;
@@ -17,7 +18,7 @@ using static System.Net.Mime.MediaTypeNames;
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-namespace PDF_Llama;
+namespace Agent_Llama;
 
 public class Configurator
 {
@@ -75,13 +76,28 @@ public class Program
         var scenarios = SpectreConsoleOutput.SelectScenarios();
         var scenario = scenarios[0];
 
+        Uri uri = starts.ModelEndpoint;
+
         DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName);
+        AtoA a2a = new(starts.ModelEndpoint, starts.ModelName);
         AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
+
+        NestEd nested = new(starts.ModelEndpoint, starts.ModelName);
+
+        ////var cardResolver = new A2ACardResolver(starts.ModelEndpoint);
+        //var agentCard = await cardResolver.GetAgentCardAsync();
 
         // present
         switch (scenario)
         {
-            
+            // NestedDictionary
+            case "Nested":
+                await nested.CreateAgent("","");
+                break;
+            case "AtoA":
+                await a2a.CreateAgent("What is the second largest city in France?",
+                    "What is the third largest city in italy?");
+                break;
 
             case "PDF AI Summariser":
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
@@ -121,6 +137,7 @@ public class Program
             case "Get Response":
                 await dotnetai.GetResponse("tell me about albert einstein");
                 break;
+
             case "Generate image":
                 await dotnetai.CreateImage("draw a circle");
                 break;
