@@ -30,6 +30,7 @@ public static class SpectreConsoleOutput
                     "[grey](Press [blue]<space>[/] to toggle a scenario, " +
                     "[green]<enter>[/] to accept)[/]")
                 .AddChoices(new[] {
+                    "Embed",
                     "Nested",
                     "AtoA",
                     "PDF AI Summariser",

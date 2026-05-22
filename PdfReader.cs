@@ -33,6 +33,35 @@ public class Reader
         }
     }
 
+    // get text and blocks
+    public string ReadPdf(string filePath)
+    {
+        StringBuilder text = new StringBuilder();
+        using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
+        {
+            foreach (var page in document.GetPages())
+            {
+                var pageText = ContentOrderTextExtractor.GetText(page);
+                text.AppendLine(pageText);
+            }
+        }
+        return text.ToString();
+    }
+
+    public List<string> ReadPdfToList(string filePath)
+    {
+        List<string> pages = new List<string>();
+        using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
+        {
+            foreach (var page in document.GetPages())
+            {
+                var pageText = ContentOrderTextExtractor.GetText(page);
+                pages.Add(pageText);
+            }
+        }
+        return pages;
+    }
+
     public List<string> Read_PDF_Blocks_AsJSON(string filePath)
     {
         List<string> jsonList = new List<string>();
@@ -96,20 +125,6 @@ public class Reader
             }
         }
         return pdf_json_list;
-    }
-    // get text and blocks
-    public string ReadPdf(string filePath)
-    {
-        StringBuilder text = new StringBuilder();
-        using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
-        {
-            foreach (var page in document.GetPages())
-            {
-                var pageText = ContentOrderTextExtractor.GetText(page);
-                text.AppendLine(pageText);
-            }
-        }
-        return text.ToString();
     }
 
     // C:\Users\risto\Downloads\Vacancy Notice EEA-AD-2024-17.pdf

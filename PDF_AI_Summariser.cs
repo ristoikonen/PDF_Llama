@@ -1,14 +1,22 @@
-﻿using Microsoft.SemanticKernel;
+﻿using MemoryPack;
+using Microsoft.Extensions.AI;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.Ollama;
 using Microsoft.SemanticKernel.Embeddings;
 using OllamaSharp;
 using OllamaSharp.Models;
+using OpenAI.Chat;
+using PdfReader;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net.Http;
 using System.Threading.Tasks;
+using UglyToad.PdfPig.Graphics;
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
+#pragma warning disable SKEXP0010
 
 namespace Agent_Llama;
 
@@ -49,7 +57,7 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             var builder = Kernel.CreateBuilder()
                 .AddOllamaTextGeneration(
                     endpoint: new Uri(ollamaEndpoint), // Use named argument for 'endpoint'
-                    modelId: ollamaModel              // Use named argument for 'modelId'
+                    modelId: ollamaModel              // Use named argument for 'modelId
                 );
 
             // Build the kernel instance
@@ -61,6 +69,8 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             // The KernelPluginFactory.CreateFromType<T>() method is used to discover  kernel functions defined within the FileContentPlugin class.
             var pdfContentPlugin = kernel.CreatePluginFromObject(new PdfContentPlugin());
             Console.WriteLine("PdfContentPlugin loaded successfully.");
+
+
 
             // --- Define the path to the text file ---
             //string filePath = Path.GetFullPath(sampleFileName);
@@ -91,6 +101,8 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             var gen = ollamaClient.AsTextEmbeddingGenerationService();
             var embeds  = await gen.GenerateEmbeddingsAsync(Input);
 
+            System.Console.WriteLine($"Generated {embeds.Count} embeddings from Ollama for PDF: {PDF_filename_local}"   );
+            
             // Create the embedding service
             //var embeddingService = OllamaApiClient.AsEmbeddingGenerationService(ollamaClient, "nomic-embed-text");
 
@@ -135,6 +147,122 @@ public sealed class PDF_AI_Summariser : IOllamaBase
         Console.WriteLine("Press any key to exit.");
         //Console.Read();
     }
+
+
+    public async Task SummarizeFileWithPdfContentPlugin(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
+    {
+        // --- Configuration ---
+        const string PDF_filename_local = @"VN.pdf";
+
+        var httpClient = new HttpClient()
+        {
+            BaseAddress = ModelEndpoint,
+            Timeout = TimeSpan.FromMinutes(20)
+        };
+
+        try
+        {
+            var builder = Kernel.CreateBuilder()
+                .AddOllamaTextGeneration(
+                    endpoint: ModelEndpoint,
+                    modelId: ModelName      
+                );
+
+            var kernel = builder.Build();
+
+            Console.WriteLine($"Kernel initialized with Ollama model: {ModelName} at {ModelEndpoint}");
+
+
+            // --- Import your custom plugin ---
+            // The KernelPluginFactory.CreateFromType<T>() method is used to discover  kernel functions defined within the FileContentPlugin class.
+            //var pdfContentPlugin = kernel.CreatePluginFromObject(new PdfContentPlugin());
+            //Console.WriteLine("PdfContentPlugin loaded successfully.");
+
+
+            builder.Services.AddOllamaTextGeneration(
+                ModelName,
+                ModelEndpoint
+            );
+
+            var Input = new List<string> { "your text to embed" };
+
+            Reader reader = new Reader();
+            var pdftxtlist = reader.ReadPdfToList(PDF_filename);
+
+
+            // Assuming you have an IHttpClientFactory and a properly configured OllamaApiClient
+            //var ollamaClient = new OllamaApiClient(ModelEndpoint, ModelName);
+
+            var ollamaClient = new OllamaApiClient(httpClient)
+            {
+                SelectedModel = ModelName
+            };
+
+            //var gen = ollamaClient.AsTextEmbeddingGenerationService();
+            var embeds = await ollamaClient.AsTextEmbeddingGenerationService().GenerateEmbeddingsAsync(pdftxtlist);
+
+            // Serialize
+            byte[] bytearr = MemoryPackSerializer.Serialize(embeds);
+            File.WriteAllBytes(@"C:\tmp\embedding.bin", bytearr);
+
+            // Deserialize
+            ReadOnlyMemory<float> embeds_from_file = MemoryPackSerializer.Deserialize<ReadOnlyMemory<float>>(bytearr);
+            
+
+            System.Console.WriteLine($"Generated {embeds.Count}, seralised {embeds_from_file.Length} embeddings from Ollama for PDF: {PDF_filename_local}");
+
+
+
+            //var prompt = $"Summarize the following text in one sentence: {documentText}";
+            //var response = await chatClient.GetResponseAsync(prompt);
+
+            //Console.WriteLine($"\nSummary:\n{response.Message.Text}");
+
+            // Create the embedding service
+            //var embeddingService = OllamaApiClient.AsEmbeddingGenerationService(ollamaClient, "nomic-embed-text");
+
+            // Generate embeddings for a text
+            //var text = "This is a sample sentence.";
+            //var embedding = await embeddingService.GenerateEmbeddingAsync(text);
+
+
+            var embeddingRequest = new EmbedRequest
+            {
+                Input = Input,
+            };
+
+            var embeddingGenerator = new OllamaApiClient(ModelEndpoint, ModelName)
+                .EmbedAsync(embeddingRequest);
+
+            //OllamaApiClientExtensions
+            //    .AddOllamaTextEmbeddingGeneration(
+            //        builder.Services,
+
+            //        modelId: ollamaModel,
+            //        endpoint: new Uri(ollamaEndpoint)
+            //    );
+
+            //var embeddingGenerator = new OllamaEmbeddingGenerator(
+            //        modelId: ollamaModel,
+            //        endpoint: new Uri(ollamaEndpoint)
+            //    );
+
+            //var embeddingGenerator = new AddOllamaTextEmbeddingGeneration(ollamaEndpoint, ollamaModel)
+            //    .GetEmbeddingClient("your chosen model")
+            //    .AsIEmbeddingGenerator();
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            Console.WriteLine($"Check your Ollama endpoint: {ModelEndpoint.AbsoluteUri} and model: {ModelName}");
+        }
+
+        Console.WriteLine("Press any key to exit.");
+    }
+
+
 
     /// <summary>
     /// Creates a sample text file with some dummy content for testing.

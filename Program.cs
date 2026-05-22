@@ -68,7 +68,6 @@ public class Program
         //var config = configurationManager.GetRequiredSection("appSettings");
 
         var configvalue1 = configurationManager.Sources; // ("ModelEndpoint"); //.AppSettings["countoffiles"];
-        // write title
 
         SpectreConsoleOutput.DisplayTitleH3($"Use Semantic Kernel Plugin; PDF Summariser -  Get response from Ollama IChatClient");
 
@@ -83,6 +82,7 @@ public class Program
         AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
 
         NestEd nested = new(starts.ModelEndpoint, starts.ModelName);
+        Embed embed = new(starts.ModelEndpoint, starts.ModelName);
 
         ////var cardResolver = new A2ACardResolver(starts.ModelEndpoint);
         //var agentCard = await cardResolver.GetAgentCardAsync();
@@ -90,10 +90,14 @@ public class Program
         // present
         switch (scenario)
         {
-            // NestedDictionary
+            case "Embed":
+                await embed.CreateAgent("", "");
+                break;
+
             case "Nested":
                 await nested.CreateAgent("","");
                 break;
+
             case "AtoA":
                 await a2a.CreateAgent("What is the second largest city in France?",
                     "What is the third largest city in italy?");
@@ -101,7 +105,7 @@ public class Program
 
             case "PDF AI Summariser":
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
-                await pdf_AI_Summariser.SummarizeFileUsingPdfContentPlugin();
+                await pdf_AI_Summariser.SummarizeFileWithPdfContentPlugin();
                 break;
 
             case "Long Agent Task":

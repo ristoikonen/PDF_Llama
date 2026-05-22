@@ -42,9 +42,13 @@ public async Task<string> SummarizeFile(
             Reader reader = new Reader(PDFPath);
             pdfpath = PDFPath + pdfFileName;
             string filePath = Path.GetFullPath(pdfpath);
-            var pdftxt = reader.ReadPdf(filePath); // Ensure the file can be read before proceeding.
-                                                 //json_chunks = reader.ReadPdfBlocks(pdfpath);
-                                                 // Create a prompt for the AI model.Instruct the model to summarize the provided text.
+            var pdftxt = reader.ReadPdf(filePath); 
+
+
+            // Ensure the file can be read before proceeding.
+            //json_chunks = reader.ReadPdfBlocks(pdfpath);
+            // Create a prompt for the AI model.Instruct the model to summarize the provided text.
+            
             prompt = @$"Summarize the following text concisely and accurately.
             If the text is too short or doesn't contain meaningful information, state that.
 
