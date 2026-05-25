@@ -1,21 +1,17 @@
-﻿using System;
+﻿
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
-using UglyToad.PdfPig.Content;
-using UglyToad.PdfPig.Core;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.PageSegmenter;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.TextExtractor;
 using UglyToad.PdfPig.DocumentLayoutAnalysis.WordExtractor;
-using UglyToad.PdfPig.Tokens;
+
+
 
 namespace PdfReader;
-
-
+//namespace Agent_Ollama;
 
 
 public class Reader
@@ -41,12 +37,31 @@ public class Reader
         {
             foreach (var page in document.GetPages())
             {
+                text.Append(page.ToString());
                 var pageText = ContentOrderTextExtractor.GetText(page);
                 text.AppendLine(pageText);
             }
         }
         return text.ToString();
     }
+
+    public string ReadPdfSmall(string filePath)
+    {
+        StringBuilder extractedText = new StringBuilder();
+        using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
+        {
+            foreach (UglyToad.PdfPig.Content.Page page in document.GetPages())
+            {
+                // Get words from the page and combine them
+                foreach (var word in page.GetWords())
+                {
+                    extractedText.Append(word.Text + " ");
+                }
+            }
+        }
+        return extractedText.ToString();
+    }
+
 
     public List<string> ReadPdfToList(string filePath)
     {

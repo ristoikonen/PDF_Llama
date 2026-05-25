@@ -1,8 +1,10 @@
 ﻿using A2A;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
 using OllamaSharp;
+using PdfReader;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -11,6 +13,7 @@ using System.Dynamic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using UglyToad.PdfPig.Graphics;
 using static System.Net.Mime.MediaTypeNames;
 
 
@@ -18,7 +21,7 @@ using static System.Net.Mime.MediaTypeNames;
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 public class Configurator
 {
@@ -81,7 +84,7 @@ public class Program
         AtoA a2a = new(starts.ModelEndpoint, starts.ModelName);
         AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
 
-        NestEd nested = new(starts.ModelEndpoint, starts.ModelName);
+        
         Embed embed = new(starts.ModelEndpoint, starts.ModelName);
 
         ////var cardResolver = new A2ACardResolver(starts.ModelEndpoint);
@@ -91,11 +94,12 @@ public class Program
         switch (scenario)
         {
             case "Embed":
+                await OldMain(Array.Empty<string>());
                 await embed.CreateAgent("", "");
                 break;
 
             case "Nested":
-                await nested.CreateAgent("","");
+                //await nested.CreateAgent("","");
                 break;
 
             case "AtoA":
@@ -253,19 +257,49 @@ public class Program
             // --- Import your custom plugin ---
             // The KernelPluginFactory.CreateFromType<T>() method is used to discover  kernel functions defined within the FileContentPlugin class.
             var pdfContentPlugin = kernel.CreatePluginFromObject(new PdfContentPlugin());
+            kernel.Plugins.Add(pdfContentPlugin);
+
             Console.WriteLine("PdfContentPlugin loaded successfully.");
 
             // --- Define the path to the text file ---
             //string filePath = Path.GetFullPath(sampleFileName);
-            //Console.WriteLine($"Attempting to summarize file: {filePath}");
 
+            // AIAgent aIAgent = new AIAgent(pdfContentPlugin);
+
+            var pdfpath = @"C:\Users\risto\source\repos\Agent_Ollama\Vn.pdf";
+            var small_pdfpath = @"C:\Users\risto\source\repos\Agent_Ollama\BusinessInsurance.pdf";
+            var evo = @"C:\Users\risto\OneDrive\Documents\what_evolution_is_not.pdf";
+            Reader reader = new Reader(pdfpath);
+            var pdftxt = reader.ReadPdf(pdfpath);
+
+
+            
+            var small_pdftxt = reader.ReadPdfSmall(evo);
+
+
+            IChatClient client = new OllamaChatClient(ollamaEndpoint, ollamaModel);
+
+            AIAgent agent = client.AsAIAgent(
+                instructions: "You are a text summariser running locally via Ollama.",
+                name: "Summarum"
+                );
+
+            var res = await agent.RunAsync("Summarise this text: " + small_pdftxt);
+
+            //pdfContentPlugin["SummarizeFile"],
+            //new() { ["pdfFileName"] = PDF_filename }
+            //);
+
+            Console.WriteLine($"Here is the response: {res}");
             // --- Invoke the plugin function ---
             // Call the 'SummarizeFile' function from your 'FileContentPlugin'.
             // The file path is passed as a named argument.
             var result = await kernel.InvokeAsync(
                 pdfContentPlugin["SummarizeFile"],
-                new() { ["pdfFileName"] = PDF_filename }
+                new() { ["pdfFileName"] = evo }
             );
+
+            // PDF_filename 
 
             Console.WriteLine("\n--- Summary from Ollama ---");
             Console.WriteLine(result.GetValue<string>());

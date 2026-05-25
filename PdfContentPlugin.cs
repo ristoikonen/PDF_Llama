@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
 
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 internal class PdfContentPlugin
 {
@@ -35,20 +35,15 @@ public async Task<string> SummarizeFile(
         string pdfpath = "";
         string prompt = "";
 
-
-        List<string>? json_chunks = null; 
         try
         {
-            Reader reader = new Reader(PDFPath);
-            pdfpath = PDFPath + pdfFileName;
-            string filePath = Path.GetFullPath(pdfpath);
-            var pdftxt = reader.ReadPdf(filePath); 
+            Reader reader = new Reader("");
+            //pdfpath = PDFPath + pdfFileName;
+            //string filePath = Path.GetFullPath(pdfpath);
+            var pdftxt = reader.ReadPdf(pdfFileName); 
 
 
-            // Ensure the file can be read before proceeding.
-            //json_chunks = reader.ReadPdfBlocks(pdfpath);
             // Create a prompt for the AI model.Instruct the model to summarize the provided text.
-            
             prompt = @$"Summarize the following text concisely and accurately.
             If the text is too short or doesn't contain meaningful information, state that.
 
@@ -74,7 +69,8 @@ public async Task<string> SummarizeFile(
             var result = await kernel.InvokePromptAsync(prompt);
 
             // Extract and return the generated summary.
-            return result.GetValue<string>()?.Trim() ?? "No summary generated.";
+            var summary  = result.GetValue<string>()?.Trim() ?? "No summary generated.";
+            return summary; // result.GetValue<string>()?.Trim() ?? "No summary generated." 
         }
         catch (Exception ex)
         {
@@ -82,9 +78,6 @@ public async Task<string> SummarizeFile(
             Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
             return $"Error invoking AI for summarization: {ex.Message}";
         }
-
-
     }
-
 }
 

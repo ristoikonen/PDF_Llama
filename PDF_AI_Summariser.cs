@@ -18,7 +18,8 @@ using UglyToad.PdfPig.Graphics;
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 #pragma warning disable SKEXP0010
 
-namespace Agent_Llama;
+namespace Agent_Ollama;  
+    
 
 public sealed class PDF_AI_Summariser : IOllamaBase
 {

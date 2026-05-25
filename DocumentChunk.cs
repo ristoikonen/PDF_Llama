@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Extensions.VectorData;
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 /*
  
  use TODO

@@ -15,14 +15,15 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading.Tasks;
-//using static Agent_Llama.AgentStructuredOutput;
+//using static
+//.AgentStructuredOutput;
 //using static System.Net.Mime.MediaTypeNames;
 
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 public interface IOllamaBase
 {

@@ -4,7 +4,7 @@ using System;
 using System.Threading.Tasks;
 using A2A;
 
-namespace Agent_Llama
+namespace Agent_Ollama
 {
     public class AtoA : IOllamaBase
     {

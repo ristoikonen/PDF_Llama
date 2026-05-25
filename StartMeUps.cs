@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 public interface IStartMeUps
 {

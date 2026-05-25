@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 public class M3U_Playlist
 { 

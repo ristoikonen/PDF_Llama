@@ -17,10 +17,11 @@ using System.Net;
 using System.Speech.Recognition;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 
-namespace Agent_Llama;
+namespace  Agent_Ollama;
 
 #pragma warning disable CA1050 // Declare types in namespaces
 #pragma warning disable MEAI001
@@ -165,3 +166,56 @@ public class Embed
         return result;
     }
 }
+/*
+internal sealed class UserInfoMemory : AIContextProvider
+{
+private readonly ProviderSessionState<UserInfo> _sessionState;
+private readonly IChatClient _chatClient;
+
+public UserInfoMemory(IChatClient chatClient)
+{
+    _sessionState = new ProviderSessionState<UserInfo>(
+        _ => new UserInfo(),
+        GetType().Name);
+    _chatClient = chatClient;
+}
+
+protected override async ValueTask StoreAIContextAsync(
+    InvokedContext context,
+    CancellationToken cancellationToken = default)
+{
+    var userInfo = _sessionState.GetOrInitializeState(context.Session);
+
+    if (userInfo.UserName is null
+        && context.RequestMessages.Any(x => x.Role == ChatRole.User))
+    {
+        var result = await _chatClient.GetResponseAsync<UserInfo>(
+            context.RequestMessages,
+            new ChatOptions()
+            {
+                Instructions =
+                    "Extract the user's name from the message if present."
+            },
+            cancellationToken: cancellationToken);
+
+        userInfo.UserName ??= result.Result.UserName;
+    }
+
+    _sessionState.SaveState(context.Session, userInfo);
+}
+
+protected override ValueTask<AIContext> ProvideAIContextAsync(
+    InvokingContext context,
+    CancellationToken cancellationToken = default)
+{
+    var userInfo = _sessionState.GetOrInitializeState(context.Session);
+
+    var instructions = userInfo.UserName is null
+        ? "Ask the user for their name."
+        : $"The user's name is {userInfo.UserName}.";
+
+    return new ValueTask<AIContext>(
+        new AIContext { Instructions = instructions });
+}
+}
+*/

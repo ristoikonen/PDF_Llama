@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 #pragma warning disable SKEXP0010 // response type
 */
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 // HOST OLLAMA LOCALLY - DOCKER
 // https://learn.microsoft.com/en-us/semantic-kernel/concepts/ai-services/embedding-generation/?tabs=csharp-Ollama&pivots=programming-language-csharp

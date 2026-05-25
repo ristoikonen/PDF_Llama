@@ -26,7 +26,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 #pragma warning disable MEAI001
 

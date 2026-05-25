@@ -5,7 +5,7 @@ using System.IO;
 
 
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 public class M3UEntry
 {

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using UglyToad.PdfPig;
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 
 //public class Settings : CommandSettings
 //{

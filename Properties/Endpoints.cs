@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Agent_Llama;
+namespace Agent_Ollama;
 internal static class Endpoints
 {
     public static readonly Uri ModelEndpointUri = new Uri("http://localhost:11434");
