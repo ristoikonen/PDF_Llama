@@ -28,56 +28,58 @@ internal class PdfContentPlugin
     [KernelFunction("SummarizeFile")]
 [Description("Reads a text file and generates a summary of its content using an AI model.")]
 public async Task<string> SummarizeFile(
-    Kernel kernel, 
-    [Description("The full path to the text file to summarize.")] string pdfFileName)
-    {
-
-        string pdfpath = "";
-        string prompt = "";
-
+    Kernel kernel,
+    
+    [Description("The full path to the pdf text file to summarize.")] string pdfFileName 
+    //,Uri ModelEndpoint,
+    //string ModelName
+    )
+{
         try
         {
-            Reader reader = new Reader("");
-            //pdfpath = PDFPath + pdfFileName;
-            //string filePath = Path.GetFullPath(pdfpath);
-            var pdftxt = reader.ReadPdf(pdfFileName); 
+            string prompt = "";
 
+            if (kernel is not null)
+            {
+                var builder = Kernel.CreateBuilder()
+                    .AddOllamaTextGeneration(
+                    //endpoint: ModelEndpoint,
+                    //modelId: ModelName
+                    );
 
-            // Create a prompt for the AI model.Instruct the model to summarize the provided text.
-            prompt = @$"Summarize the following text concisely and accurately.
-            If the text is too short or doesn't contain meaningful information, state that.
+                //var kernel = builder.Build();
 
-            Text to summarize:
-            {pdftxt}
+                Reader reader = new Reader("");
+                //pdfpath = PDFPath + pdfFileName;
+                //string filePath = Path.GetFullPath(pdfpath);
+                var pdftxt = reader.ReadPdf(pdfFileName); 
 
-            Summary:";
+                // Create a prompt for the AI model.Instruct the model to summarize the provided text.
+                prompt = @$"Summarize the following text concisely and accurately.
+                If the text is too short or doesn't contain meaningful information, state that.
 
+                Text to summarize:
+                {pdftxt}
+
+                Summary:";
+
+                // Invoke Ollama text generation service with the prompt.
+                var result = await kernel.InvokePromptAsync(prompt);
+
+                // Extract and return the generated summary.
+                var summary = result.GetValue<string>()?.Trim() ?? "No summary generated.";
+                return summary; // result.GetValue<string>()?.Trim() ?? "No summary generated." 
+            }
+            return "Kernel is not available.";
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error reading file {pdfpath}: {ex.Message}");
-            return $"Error reading file {pdfpath}: {ex.Message}";
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            Console.WriteLine($"Error reading file {pdfFileName}: {ex.Message}");
+            return $"Error reading file {pdfFileName}: {ex.Message}";
         }
 
         // https://github.com/microsoft/semantic-kernel/blob/main/dotnet/samples/GettingStartedWithTextSearch/InMemoryVectorStoreFixture.cs#L139
-
-        Console.WriteLine("Sending content to Ollama for summarization...");
-
-        try
-        {
-            // Invoke Ollama text generation service with the prompt.
-            var result = await kernel.InvokePromptAsync(prompt);
-
-            // Extract and return the generated summary.
-            var summary  = result.GetValue<string>()?.Trim() ?? "No summary generated.";
-            return summary; // result.GetValue<string>()?.Trim() ?? "No summary generated." 
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error invoking AI for summarization: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            return $"Error invoking AI for summarization: {ex.Message}";
-        }
     }
 }
 

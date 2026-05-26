@@ -230,7 +230,7 @@ public class Program
         // Name of the sample text file to summarize. Make sure this file exists in the
         // same directory as your application's executable, or provide a full path.
         const string sampleFileName = "my_document.txt";
-        const string PDF_filename = @"VN.pdf";
+        //const string PDF_filename = @"VN.pdf";
 
         Console.WriteLine("Setting up Semantic Kernel with Ollama...");
 
@@ -267,7 +267,7 @@ public class Program
             // AIAgent aIAgent = new AIAgent(pdfContentPlugin);
 
             var pdfpath = @"C:\Users\risto\source\repos\Agent_Ollama\Vn.pdf";
-            var small_pdfpath = @"C:\Users\risto\source\repos\Agent_Ollama\BusinessInsurance.pdf";
+            
             var evo = @"C:\Users\risto\OneDrive\Documents\what_evolution_is_not.pdf";
             Reader reader = new Reader(pdfpath);
             var pdftxt = reader.ReadPdf(pdfpath);
