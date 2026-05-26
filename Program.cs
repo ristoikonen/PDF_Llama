@@ -90,7 +90,6 @@ public class Program
         ////var cardResolver = new A2ACardResolver(starts.ModelEndpoint);
         //var agentCard = await cardResolver.GetAgentCardAsync();
 
-        // present
         switch (scenario)
         {
             case "Embed":
@@ -99,6 +98,11 @@ public class Program
                 break;
 
             case "Nested":
+                string parts = @"C:\tmp\W812 - Parts List.pdf";
+                //string parts = @"C:\tmp\EMEA_CAT_CH_Small engine_CATCM1809.pdf";
+                PDF_AI_Summariser pdf_AI_Summariser2 = new(starts.ModelEndpoint, starts.ModelName);
+                await pdf_AI_Summariser2.SummarizeFileUsingPdfContentPlugin(parts);
+
                 //await nested.CreateAgent("","");
                 break;
 
@@ -109,7 +113,7 @@ public class Program
 
             case "PDF AI Summariser":
                 PDF_AI_Summariser pdf_AI_Summariser = new(starts.ModelEndpoint, starts.ModelName);
-                await pdf_AI_Summariser.SummarizeFileWithPdfContentPlugin();
+                await pdf_AI_Summariser.GenerateEmbeddingsWithPdfContentPlugin();
                 break;
 
             case "Long Agent Task":

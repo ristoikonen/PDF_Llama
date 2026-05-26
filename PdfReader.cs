@@ -33,16 +33,20 @@ public class Reader
     public string ReadPdf(string filePath)
     {
         StringBuilder text = new StringBuilder();
-        using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
-        {
-            foreach (var page in document.GetPages())
+        if(File.Exists(filePath))
+        { 
+            using (var document = UglyToad.PdfPig.PdfDocument.Open(filePath))
             {
-                text.Append(page.ToString());
-                var pageText = ContentOrderTextExtractor.GetText(page);
-                text.AppendLine(pageText);
+                foreach (var page in document.GetPages())
+                {
+                    text.Append(page.ToString());
+                    var pageText = ContentOrderTextExtractor.GetText(page);
+                    text.AppendLine(pageText);
+                }
             }
+            return text.ToString();
         }
-        return text.ToString();
+        return "";
     }
 
     public string ReadPdfSmall(string filePath)

@@ -37,29 +37,28 @@ public sealed class PDF_AI_Summariser : IOllamaBase
         // --- Configuration ---
         //const string ollamaEndpoint = "http://localhost:11434";
         //const string ollamaModel = "llama3.2";
-        //const string PDF_filename_local = @"VN.pdf";
-
-        Console.WriteLine("Summarise Plugin...");
 
 
         // --- Create a sample text file for demonstration ---
         // This ensures there's a file for the plugin to read.
-        await CreateSampleTextFile(PDF_filename);
+        //await CreateSampleTextFile(PDF_filename);
 
         // --- Initialize the Semantic Kernel ---
         try
         {
-            // Fix for CS1744: Named argument 'modelId' specifies a parameter for which a positional argument has already been given.
-            // The issue occurs because the named argument 'modelId' is used after a positional argument has already been provided.
-            // To fix this, ensure all arguments are either positional or named consistently.
+            var httpClient = new HttpClient()
+            {
+                BaseAddress = ModelEndpoint,
+                Timeout = TimeSpan.FromMinutes(5)
+            };
 
             var builder = Kernel.CreateBuilder()
                 .AddOllamaTextGeneration(
-                    endpoint: ModelEndpoint, // Use named argument for 'endpoint'
-                    modelId: ModelName              // Use named argument for 'modelId
+                    
+                    modelId: ModelName,
+                    httpClient: httpClient 
                 );
 
-            // Build the kernel instance
             var kernel = builder.Build();
 
             Console.WriteLine($"Kernel initialized with Ollama model: {ModelName} at {ModelEndpoint}");
@@ -70,22 +69,19 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             Console.WriteLine("PdfContentPlugin loaded successfully.");
 
 
-
             // --- Define the path to the text file ---
             //string filePath = Path.GetFullPath(sampleFileName);
             //Console.WriteLine($"Attempting to summarize file: {filePath}");
 
             // --- Invoke the plugin function ---
             // Call the 'SummarizeFile' function from your 'FileContentPlugin'.
-            // The file path is passed as a named argument.
+
             var result = await kernel.InvokeAsync(
                 pdfContentPlugin["SummarizeFile"],
                 new() { ["pdfFileName"] = PDF_filename }
             );
-            //,["ModelEndpoint"] = ModelEndpoint, ["ModelName"] = ModelName } 
 
-
-            Console.WriteLine("\n--- Summary from Ollama ---");
+            Console.WriteLine("\n--- Result from Ollama ---");
             Console.WriteLine(result.GetValue<string>());
 
             builder.Services.AddOllamaTextGeneration(
@@ -93,12 +89,14 @@ public sealed class PDF_AI_Summariser : IOllamaBase
                 endpoint: ModelEndpoint
             );
 
-            var Input = new List<string> { "your text to embed" };
+            //var Input = new List<string> { "your text to embed" };
+            Reader reader = new Reader();
+            var pdftxt = reader.ReadPdfToList(PDF_filename);
 
             // Assuming you have an IHttpClientFactory and a properly configured OllamaApiClient
             var ollamaClient = new OllamaApiClient(ModelEndpoint, ModelName);
             var gen = ollamaClient.AsTextEmbeddingGenerationService();
-            var embeds  = await gen.GenerateEmbeddingsAsync(Input);
+            var embeds  = await gen.GenerateEmbeddingsAsync(pdftxt);
 
             System.Console.WriteLine($"Generated {embeds.Count} embeddings from Ollama for PDF: {PDF_filename}"   );
             
@@ -149,15 +147,12 @@ public sealed class PDF_AI_Summariser : IOllamaBase
     }
 
 
-    public async Task SummarizeFileWithPdfContentPlugin(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
+    public async Task GenerateEmbeddingsWithPdfContentPlugin(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
     {
-        // --- Configuration ---
-        const string PDF_filename_local = @"VN.pdf";
-
         var httpClient = new HttpClient()
         {
             BaseAddress = ModelEndpoint,
-            Timeout = TimeSpan.FromMinutes(20)
+            Timeout = TimeSpan.FromMinutes(5)
         };
 
         try
@@ -165,7 +160,7 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             var builder = Kernel.CreateBuilder()
                 .AddOllamaTextGeneration(
                     endpoint: ModelEndpoint,
-                    modelId: ModelName      
+                    modelId: ModelName
                 );
 
             var kernel = builder.Build();
@@ -181,14 +176,11 @@ public sealed class PDF_AI_Summariser : IOllamaBase
 
             builder.Services.AddOllamaTextGeneration(
                 ModelName,
-                ModelEndpoint
+                httpClient
             );
-
-            var Input = new List<string> { "your text to embed" };
 
             Reader reader = new Reader();
             var pdftxtlist = reader.ReadPdfToList(PDF_filename);
-
 
             // Assuming you have an IHttpClientFactory and a properly configured OllamaApiClient
             //var ollamaClient = new OllamaApiClient(ModelEndpoint, ModelName);
@@ -207,28 +199,18 @@ public sealed class PDF_AI_Summariser : IOllamaBase
 
             // Deserialize
             ReadOnlyMemory<float> embeds_from_file = MemoryPackSerializer.Deserialize<ReadOnlyMemory<float>>(bytearr);
-            
 
-            System.Console.WriteLine($"Generated {embeds.Count}, seralised {embeds_from_file.Length} embeddings from Ollama for PDF: {PDF_filename_local}");
-
-
+            System.Console.WriteLine($"Generated {embeds.Count}, serialised {embeds_from_file.Length} embeddings from Ollama for PDF: {PDF_filename}");
 
             //var prompt = $"Summarize the following text in one sentence: {documentText}";
             //var response = await chatClient.GetResponseAsync(prompt);
-
             //Console.WriteLine($"\nSummary:\n{response.Message.Text}");
-
             // Create the embedding service
             //var embeddingService = OllamaApiClient.AsEmbeddingGenerationService(ollamaClient, "nomic-embed-text");
 
-            // Generate embeddings for a text
-            //var text = "This is a sample sentence.";
-            //var embedding = await embeddingService.GenerateEmbeddingAsync(text);
-
-
             var embeddingRequest = new EmbedRequest
             {
-                Input = Input,
+                Input = pdftxtlist,
             };
 
             var embeddingGenerator = new OllamaApiClient(ModelEndpoint, ModelName)

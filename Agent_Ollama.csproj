@@ -8,6 +8,10 @@ le</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="M3UEntry.cs" />
+    <Compile Remove="M3U_Playlist.cs" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="MemoryPack" Version="1.21.4" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.0.0" />
     <PackageReference Include="Microsoft.Agents.AI.A2A" Version="1.3.0-preview.260423.1" />
