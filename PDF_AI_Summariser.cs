@@ -13,6 +13,7 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
+using Agent_Ollama.Plugins;
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
 #pragma warning disable SKEXP0070 // AddOllamaTextGeneration
@@ -46,6 +47,11 @@ public sealed class PDF_AI_Summariser : IOllamaBase
         // --- Initialize the Semantic Kernel ---
         try
         {
+            string PDF_filename_parts = @"C:\tmp\W812 - Parts List.pdf";
+
+            Reader reader_parts = new Reader();
+            var pdfpartstxt = reader_parts.ReadPdf(PDF_filename_parts);
+
             var httpClient = new HttpClient()
             {
                 BaseAddress = ModelEndpoint,
@@ -68,17 +74,25 @@ public sealed class PDF_AI_Summariser : IOllamaBase
             var pdfContentPlugin = kernel.CreatePluginFromObject(new PdfContentPlugin());
             Console.WriteLine("PdfContentPlugin loaded successfully.");
 
+            var kvcPlugin = kernel.CreatePluginFromObject(new KVCPlugin());
+            Console.WriteLine("KVCPlugin loaded successfully.");
 
             // --- Define the path to the text file ---
             //string filePath = Path.GetFullPath(sampleFileName);
             //Console.WriteLine($"Attempting to summarize file: {filePath}");
 
-            // --- Invoke the plugin function ---
-            // Call the 'SummarizeFile' function from your 'FileContentPlugin'.
+            var result_parts = await kernel.InvokeAsync(
+                kvcPlugin["GetTuples"],
+                new() { ["sourceText"] = pdfpartstxt }
+            );
+
+
+            Console.WriteLine("\n--- Result from Ollama ---");
+            Console.WriteLine(result_parts.GetValue<string>());
 
             var result = await kernel.InvokeAsync(
                 pdfContentPlugin["SummarizeFile"],
-                new() { ["pdfFileName"] = PDF_filename }
+                new() { ["sourceText"] = PDF_filename }
             );
 
             Console.WriteLine("\n--- Result from Ollama ---");

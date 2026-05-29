@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
 
 
-namespace Agent_Ollama;
+namespace Agent_Ollama.Plugins;
 
 internal class PdfContentPlugin
 {

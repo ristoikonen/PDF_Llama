@@ -1,21 +1,22 @@
 ﻿using A2A;
+using Agent_Ollama.Plugins;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
+using Newtonsoft.Json.Schema;
 using OllamaSharp;
+using OllamaSharp.Models;
 using PdfReader;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Dynamic;
 using System.IO;
-using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
 using static System.Net.Mime.MediaTypeNames;
-
 
 
 #pragma warning disable CA1861 // Avoid constant arrays as arguments
@@ -163,9 +164,52 @@ public class Program
                 Console.WriteLine(Environment.NewLine);
                 AnsiConsole.Markup($"[bold yellow]Analysing with {starts.ModelName}[/]");
 
+                const string spareparts_text_file = @"c:\tmp\W812 - Parts List.pdf";
+                Reader reader = new Reader();
+                var spareparts_text = reader.ReadPdf(spareparts_text_file) ?? "";
+
+                var jsonSchema = new
+                {
+                    type = "object",
+                    properties = new
+                    {
+                        key = new { type = "string" },
+                        value = new { type = "string" },
+                        count = new { type = "integer" }, 
+
+                    },
+                    required = new[] { "name", "value" }
+                };
+
+                string prompt = "Find and create Key-Value-Count part data from part list from text provided:" + spareparts_text;
+
+                var request = new GenerateRequest
+                {
+                    Model = starts.ModelName,
+                    Prompt = prompt,
+                    System = "You are a data extractor.",
+                    Format = JsonSerializer.Serialize(jsonSchema), // Apply JSON Schema here
+                    ////Options = new RequestOptions
+                    ////{
+                    ////    Temperature = 0.2, // Controls creativity (lower is more deterministic)
+                    ////    NumPredict = 250   // Max tokens to generate
+                    ////}
+                };
+
+
+                var api_client = new OllamaApiClient(starts.ModelEndpoint, starts.ModelName);
+                var response = api_client.GenerateAsync(request);
+                    //TODO: continue!
+                var jsonOutput = await response.StreamToEndAsync();
+                Console.WriteLine(jsonOutput);
+
+                //api_client.GenerateAsync<SparePart>(request );
+
                 // Microsoft.Extensions.AI
                 IChatClient chatClient =
                     new OllamaApiClient(starts.ModelEndpoint, starts.ModelName);
+
+
 
                 //var posts = Directory.GetFiles("my_document").Take(1).ToArray();
                 //var post = posts[0];
@@ -173,7 +217,7 @@ public class Program
                 //            The pupae of different groups of insects have different names such as chrysalis for the pupae of butterflies and tumbler for those of the mosquito family. Pupae may further be enclosed in other structures such as cocoons, nests, or shells.";
                 
                 // {File.ReadAllText(post)}
-                string prompt = $$"""
+                string prompt2 = $$"""
                      You will receive an input text and the desired output format.
                      You need to analyze the text and produce the desired output format.
                      You not allow to change code, text, or other references.
@@ -192,7 +236,7 @@ public class Program
                      {{input}}
                      """;
 
-                var response_to_prompt = await chatClient.GetResponseAsync(prompt);
+                var response_to_prompt = await chatClient.GetResponseAsync(prompt2);
                 Console.WriteLine(response_to_prompt.Text);
                 Console.WriteLine(Environment.NewLine);
 
@@ -225,6 +269,27 @@ public class Program
         }
     }
 
+    public class StructOut 
+    { 
+        string ID { get; set; }
+        string Name { get; set; }
+        int Count { get; set; }
+    }
+
+
+    public class SparePart
+    {
+        public string ID { get; set; }
+        public string Name { get; set; }
+        public int Count { get; set; }
+    }
+
+
+    public class Doc
+    {
+        public string Recommendation { get; set; }
+        public string Response { get; set; }
+    }
 
     public static async Task OldMain(string[] args)
     {
@@ -234,7 +299,9 @@ public class Program
         // Name of the sample text file to summarize. Make sure this file exists in the
         // same directory as your application's executable, or provide a full path.
         const string sampleFileName = "my_document.txt";
-        //const string PDF_filename = @"VN.pdf";
+
+        ImageExtractor extract = new ImageExtractor();
+        await extract.ReadPdf(@"C:\tmp\Government-Response-p2019-41708.pdf");
 
         Console.WriteLine("Setting up Semantic Kernel with Ollama...");
 
@@ -255,7 +322,8 @@ public class Program
 
             // Build the kernel instance
             var kernel = builder.Build();
-
+            
+            // utilize qwen2.5 or llama3.1:8b
             Console.WriteLine($"Kernel initialized with Ollama model: {ollamaModel} at {ollamaEndpoint}");
 
             // --- Import your custom plugin ---
@@ -275,13 +343,79 @@ public class Program
             var evo = @"C:\Users\risto\OneDrive\Documents\what_evolution_is_not.pdf";
             Reader reader = new Reader(pdfpath);
             var pdftxt = reader.ReadPdf(pdfpath);
-
-
-            
             var small_pdftxt = reader.ReadPdfSmall(evo);
 
+            const string spareparts_text_file = @"c:\tmp\australian-government-response-to-the-final-report-of-the-royal-commission-into-aged-care-quality-and-safety.pdf";
+            var spareparts_text = reader.ReadPdf(spareparts_text_file);
+
+            var jsonSchemas = new
+            {
+                type = "object",
+                properties = new
+                {
+                    foreword = new { type = "string" },
+                    introduction = new { type = "string" },
+                    //count = new { type = "integer" },
+
+                },
+                required = new[] { "recommendation", "response" }
+            };
+
+            string jsonSchema = """
+            {
+                "type": "object",
+                "properties": {
+                    "foreword": { "type": "string" },
+                    "introduction": { "type": "string" }
+                },
+                "required": ["foreword", "introduction"]
+            }
+            """;
+
+            AgentRunOptions runOptions = new()
+            {
+                ResponseFormat = ChatResponseFormat.ForJsonSchema(JsonElement.Parse(jsonSchema), "Doc", "Find parts of text")
+                //ResponseFormat = ChatResponseFormat.ForJsonSchema<SparePart>()
+            };
+
+            // 2. Set up options to enforce Structured Output and low temperature for accuracy
+            var structuredOptions = new ChatOptions
+            {
+                Temperature = 0.0f, // Essential for strict formatting adherence
+                ResponseFormat = ChatResponseFormat.ForJsonSchema<SparePart>(
+                )
+            };
+    
 
             IChatClient client = new OllamaChatClient(ollamaEndpoint, ollamaModel);
+
+            AIAgent agent_KVC = client.AsAIAgent(
+                instructions: "You are a helpful data extractor finding data from text: " + spareparts_text,
+                name: "Summarum"
+                );
+
+            AgentResponse response = await agent_KVC.RunAsync("Extract text details.", options: runOptions);
+
+            JsonElement result = JsonSerializer.Deserialize<JsonElement>(response.Text);
+
+            Doc doc = JsonSerializer.Deserialize<Doc>(response.Text, JsonSerializerOptions.Web)!;
+
+            SparePart personInfo = JsonSerializer.Deserialize<SparePart>(response.Text, JsonSerializerOptions.Web)!;
+
+
+            var result_kvc = await agent_KVC.RunAsync<SparePart>("Get spare part details into a structure from text provided: " + spareparts_text);
+
+            Console.WriteLine("\n--- Spare part details from agent_KVC ---");
+            Console.WriteLine(result_kvc.Text);
+            Console.WriteLine(result_kvc.Result);
+            Console.WriteLine("---------------------------\n");
+
+            var response2 = await client.GetResponseAsync<SparePart>("Get spare part details into a structure from text provided.");
+
+            Console.WriteLine("\n--- Spare part details from agent_KVC ---");
+            Console.WriteLine(response2.Text);
+            Console.WriteLine(response2.Result);
+            Console.WriteLine("---------------------------\n");
 
             AIAgent agent = client.AsAIAgent(
                 instructions: "You are a text summariser running locally via Ollama.",
@@ -298,7 +432,7 @@ public class Program
             // --- Invoke the plugin function ---
             // Call the 'SummarizeFile' function from your 'FileContentPlugin'.
             // The file path is passed as a named argument.
-            var result = await kernel.InvokeAsync(
+            var result2 = await kernel.InvokeAsync(
                 pdfContentPlugin["SummarizeFile"],
                 new() { ["pdfFileName"] = evo }
             );
@@ -306,7 +440,7 @@ public class Program
             // PDF_filename 
 
             Console.WriteLine("\n--- Summary from Ollama ---");
-            Console.WriteLine(result.GetValue<string>());
+            Console.WriteLine(result2.GetValue<string>());
             Console.WriteLine("---------------------------\n");
         }
         catch (Exception ex)
