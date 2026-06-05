@@ -38,6 +38,7 @@ public static class SpectreConsoleOutput
                     "Store Embedding",
                     "Oil Price Agent",
                     "Structured",
+                    "Traffic Agent",
                     "Conversation",
                     "Use Agent",
                     "Get Response",

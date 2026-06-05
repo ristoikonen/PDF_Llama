@@ -1,4 +1,6 @@
-﻿using Azure.AI.OpenAI;
+﻿using Agent_Ollama.Agents;
+using Agent_Ollama.Models;
+using Azure.AI.OpenAI;
 using Microsoft.Agents.AI;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.AI;
@@ -12,19 +14,19 @@ using OpenAI.Chat;
 //using OllamaSharp;
 //using OllamaSharp.Models;
 using OpenAI.Images;
+using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Net.Http.Json;
-
-using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
-using System;
-using System.Net.Http;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Linq;
+using static UglyToad.PdfPig.Core.PdfSubpath;
+using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 
 namespace Agent_Ollama;
 
@@ -251,6 +253,54 @@ public sealed class DotNetAI
         Console.WriteLine("Press any key to exit.");
     }
 
+
+    public async Task TrafficAgent(string city)
+    {
+
+        try
+        {
+
+            //    var httpClient = new HttpClient();
+            //    PriceResult? pr = null;
+
+            //    var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
+            //    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            //    var content = await httpClient.GetStringAsync(url);
+
+            //    dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+
+            //    var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+            //    foreach (var element in list!)
+            //    {
+            //        pr = JsonSerializer.Deserialize<PriceResult>(element);
+            //        if (pr is not null)
+            //        {
+            //            string price = pr.price_usd ?? "0";
+            //            Console.WriteLine(price);
+
+            //        }
+            //        //Console.WriteLine(element.GetProperty("price_us").GetString());
+            //    }
+
+
+            TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint);
+
+            var roads = await traffic!.RushHour(city) ?? new List<Road>();
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+        }
+        
+    }
+
+
+
+
     public async Task UseAgent(string question)
     {
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
@@ -371,13 +421,17 @@ public sealed class DotNetAI
     //
 
 
+
+
+
     public async Task Conversation(string conversation_starter)
     {
         // --- Configuration ---
-        const string ollamaEndpoint = "http://localhost:11434";
-        const string ollamaModel = "llama3.2";
+        //const string ollamaEndpoint = "http://localhost:11434";
+        //const string ollamaModel = "llama3.2";
 
         Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
+
 
 
         ////    AIAgent agent = new AzureOpenAIClient(
@@ -389,6 +443,8 @@ public sealed class DotNetAI
 
         try
         {
+            const string question = "What roads have heavy traffic and which times and directions, in Melbourne?";
+
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
@@ -396,15 +452,16 @@ public sealed class DotNetAI
                 name: "Jeeves"
                 );
 
-
-
             AgentSession session = await agent.CreateSessionAsync();
+            var serialized = await agent.SerializeSessionAsync(session);
+
+            AgentResponse<List<Road>> structuredResponse = await agent.RunAsync<List<Road>>(question, session);
+            List<Road> movies = structuredResponse.Result;
 
 
-            Console.WriteLine(await agent.RunAsync("My name is Risto and I love hiking. i am 59 years old and I do some dumbbell exercises", session));
+            var deserializedSession = await agent.DeserializeSessionAsync(serialized);
 
-
-            Console.WriteLine(await agent.RunAsync("List things I could like.", session));
+            //Console.WriteLine(await agent.RunAsync("List things I could like.", session));
 
             //Optional streaming response
             /*
@@ -422,7 +479,7 @@ public sealed class DotNetAI
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
             Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+            Console.WriteLine($"Check your Ollama endpoint: {ModelEndpoint.AbsoluteUri} and model: {ModelName}");
         }
 
         Console.WriteLine("Press any key to exit.");

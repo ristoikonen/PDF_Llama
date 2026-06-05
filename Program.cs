@@ -94,13 +94,14 @@ public class Program
         switch (scenario)
         {
             case "Embed":
+                //InMemoryVectorStoreFixture inMemoryVectorStoreFixture = new InMemoryVectorStoreFixture();
+                //await inMemoryVectorStoreFixture.InitializeAsync();
                 await OldMain(Array.Empty<string>());
                 await embed.CreateAgent("", "");
                 break;
 
             case "Nested":
                 string parts = @"C:\tmp\W812 - Parts List.pdf";
-                //string parts = @"C:\tmp\EMEA_CAT_CH_Small engine_CATCM1809.pdf";
                 PDF_AI_Summariser pdf_AI_Summariser2 = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser2.SummarizeFileUsingPdfContentPlugin(parts);
 
@@ -135,6 +136,10 @@ public class Program
 
             case "Structured":
                 await agent_struct.RunAgent();
+                break;
+
+            case "Traffic Agent":
+                await dotnetai.TrafficAgent("Sydney");
                 break;
 
             case "Conversation":
