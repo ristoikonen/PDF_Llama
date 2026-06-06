@@ -11,8 +11,15 @@ using System.Xml.Linq;
 
 namespace Agent_Ollama.Agents;
 
+internal sealed class UserInfo
+{
+    public string? UserName { get; set; }
+    public int? UserAge { get; set; }
+}
+
 internal class TrafficAgent
 {
+    //TODO: logging
     private Uri ModelEndpoint { get; set; }
     private string ModelName { get; set; }
 
@@ -22,11 +29,11 @@ internal class TrafficAgent
         this.ModelName = ollamaModel;
         this.ModelEndpoint = ollamaEndpoint;
     }
+    
+    // https://devblogs.microsoft.com/dotnet/microsoft-agent-framework-building-blocks-for-ai-part-3/
 
     public async Task<List<Road>> RushHour(string city)
     {
-        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent for Agent " + AgentName + "...");
-
         try
         {
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
@@ -43,6 +50,12 @@ internal class TrafficAgent
             AgentResponse<List<Road>> structuredResponse = await agent.RunAsync<List<Road>>(question, session);
             
             List<Road> roads = structuredResponse?.Result ?? new List<Road>();
+
+            var recommendeations = await agent.RunAsync(
+                "Now recommend how to get around these busiest roads.",
+                session);
+
+            Console.WriteLine(recommendeations);
 
             // JsonElement to file for inspection
             /*

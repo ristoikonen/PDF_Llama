@@ -46,13 +46,9 @@ public async Task<string> SummarizeFile(
                 //var kernel = builder.Build();
 
                 Reader reader = new Reader();
-                //pdfpath = PDFPath + pdfFileName;
-                //string filePath = Path.GetFullPath(pdfpath);
                 var pdftxt = reader.ReadPdf(pdfFileName);
 
                 // Create a prompt for the AI model.Instruct the model to summarize the provided text.
-                // Socket head screw M5X25        1
-
                 prompt = @$"Find and create Key-Value list of parts from text provided below. Sample Key-Value pair: 'Washer    DM-2524'
                 If the text is too short or doesn't contain meaningful information, state that.
 

@@ -1,23 +1,20 @@
 ﻿using Agent_Ollama.Agents;
 using Agent_Ollama.Models;
 using Azure.AI.OpenAI;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Agents.AI;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.SqliteVec;
-using OllamaSharp;
-using OllamaSharp.Models;
-using OpenAI.Chat;
-//using Microsoft.Extensions.AI.Ollama;
-//using OllamaSharp;
-//using OllamaSharp.Models;
 using OpenAI.Images;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -27,16 +24,19 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using static UglyToad.PdfPig.Core.PdfSubpath;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
+using Agent_Ollama.Helpers;
 
 namespace Agent_Ollama;
 
 #pragma warning disable MEAI001
+
 
 public sealed class DotNetAI
 {
     // comfyui 
     public Uri ModelEndpoint { get; set; }
     public string ModelName { get; set; }
+    private readonly ILogger _logger;
 
     //record PriceResult(decimal Price);
 
@@ -50,10 +50,11 @@ public sealed class DotNetAI
         public string? percent_change_24h { get; init; }
     }
 
-    public DotNetAI(Uri modelEndpoint, string modelName)
+    public DotNetAI(Uri modelEndpoint, string modelName, ILogger logger)
     {
         this.ModelEndpoint = modelEndpoint;
         this.ModelName = modelName;
+        this._logger = logger;
     }
 
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
@@ -90,7 +91,6 @@ public sealed class DotNetAI
 
             return "0";
 
-            //return result is not null
             //    ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
             //    : $"Price for {id} not available.";
         }
@@ -104,7 +104,6 @@ public sealed class DotNetAI
     [Description("Get the weather for a given location.")]
     public static string GetWeather([Description("The location to get the weather for.")] string location)
         => $"The weather in {location} is ...";
-    //  = @"Describe your model and it's abilities"
 
 
     [Description("Get the oil price per barrel in USD.")]
@@ -127,7 +126,6 @@ public sealed class DotNetAI
 
     public async Task UseOilAgent(string question)
     {
-        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
 
         try
         {
@@ -141,12 +139,10 @@ public sealed class DotNetAI
                , tools: [AIFunctionFactory.Create(getOilPrice)]
                 );
 
-            Console.WriteLine(await agent.RunAsync("Find oli price per barrel."));
-
             AgentSession session = await agent.CreateSessionAsync();
 
             // First turn
-            Console.WriteLine(await agent.RunAsync("Find oli price per barrel.", session));
+            //_logger.LogAgentResponse(await agent.RunAsync("Find oli price per barrel.", session));
 
 
             //AIAgent agentoil = client.AsAIAgent(
@@ -154,7 +150,7 @@ public sealed class DotNetAI
             //   , tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
             //    );
 
-            //Console.WriteLine(await agentoil.RunAsync("Find oli price per barrel."));
+            //_logger.LogAgentResponse(await agentoil.RunAsync("Find oli price per barrel."));
 
 
             AgentResponse response = await agent.RunAsync(question, session);
@@ -166,9 +162,8 @@ public sealed class DotNetAI
                 List<ChatMessage> userInputResponses = approvalRequests
                 .ConvertAll(functionApprovalRequest =>
                 {
-                    Console.WriteLine($"The agent would like to invoke the following function, please reply Y to approve: " +
-                        $"Location: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["location"]} , " +
-                        $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
+                    var functionName = ((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name;
+                    _logger.LogToolApprovalRequest(functionName);
                     return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
@@ -177,36 +172,25 @@ public sealed class DotNetAI
                 approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
             }
 
-            Console.WriteLine($"\nAgent: {response}");
-
-            //Console.WriteLine(await agent.RunAsync(question));  
-
+            _logger.LogAgentResponse($"\nAgent: {response}");
 
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            //Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+            _logger.LogError(ex.Message);
         }
-
-        Console.WriteLine("Press any key to exit.");
     }
 
-    //
-    
-        
-        //WriteAllText(@"C:\tmp\agent_response.txt", instructions + Environment.NewLine + response.ToString());
-    // BooklInstructions.txt: "Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test"
-
+       
     // USAGE:
     // await dotnetai.RunLongAgent(@"Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test");
     public async Task RunLongAgent(string instructions)
     {
-        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
 
         try
         {
+            long startTime = Stopwatch.GetTimestamp();
+            
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
@@ -225,7 +209,7 @@ public sealed class DotNetAI
             // Get initial response - may return with or without a continuation token
             AgentResponse response = await agent.RunAsync(instructions, session, options);
 
-            Console.WriteLine($"Initial response: {DateTime.Now.ToShortTimeString}");
+            _logger.LogResponseElapsedTime("Initial response time:", Stopwatch.GetElapsedTime(startTime).ToString());
 
             // Continue to poll until the final response is received
             while (response.ContinuationToken is not null)
@@ -239,63 +223,42 @@ public sealed class DotNetAI
 
             System.IO.File.WriteAllText(@"C:\tmp\agent_response2NEW.txt", instructions + Environment.NewLine + response.Text);
 
-            Console.WriteLine($"Response: {DateTime.Now.ToShortTimeString}");
-            Console.WriteLine(response.Text);
+            _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
+
 
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            //Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+            _logger.LogError(ex.Message);
         }
-
-        Console.WriteLine("Press any key to exit.");
     }
 
 
     public async Task TrafficAgent(string city)
     {
-
         try
         {
+            _logger.LogAgent("TrafficAgent", city);
 
-            //    var httpClient = new HttpClient();
-            //    PriceResult? pr = null;
-
-            //    var url = $"https://api.coinlore.net/api/ticker/?id=90";
-
-            //    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-            //    var content = await httpClient.GetStringAsync(url);
-
-            //    dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
-
-            //    var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
-            //    foreach (var element in list!)
-            //    {
-            //        pr = JsonSerializer.Deserialize<PriceResult>(element);
-            //        if (pr is not null)
-            //        {
-            //            string price = pr.price_usd ?? "0";
-            //            Console.WriteLine(price);
-
-            //        }
-            //        //Console.WriteLine(element.GetProperty("price_us").GetString());
-            //    }
+            var start =  DateTime.Now;
+            long startTime = Stopwatch.GetTimestamp();
 
 
             TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint);
 
             var roads = await traffic!.RushHour(city) ?? new List<Road>();
 
+            //TimeSpan elapsed = Stopwatch.GetElapsedTime(startTime);
+
+            //LogExtensions.LogResponseElapsedTime(_logger, "Traffic report time:", Stopwatch.GetElapsedTime(startTime));
+            _logger.LogResponseElapsedTime("Traffic report time:", Stopwatch.GetElapsedTime(startTime).ToString());
+
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            _logger.LogError(ex.Message);
         }
-        
+
     }
 
 
@@ -303,7 +266,7 @@ public sealed class DotNetAI
 
     public async Task UseAgent(string question)
     {
-        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
+
 
         try
         {
@@ -326,10 +289,10 @@ public sealed class DotNetAI
         //        if (pr is not null)
         //        {
         //            string price = pr.price_usd ?? "0";
-        //            Console.WriteLine(price);
+        //            _logger.LogAgentResponse(price);
 
         //        }
-        //        //Console.WriteLine(element.GetProperty("price_us").GetString());
+        //        //_logger.LogAgentResponse(element.GetProperty("price_us").GetString());
         //    }
 
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
@@ -342,7 +305,7 @@ public sealed class DotNetAI
 
 
             AgentSession session = await agent.CreateSessionAsync();
-            
+
             AgentResponse response = await agent.RunAsync(question, session);
             List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
 
@@ -353,10 +316,9 @@ public sealed class DotNetAI
                 {
                     //Microsoft.Extensions.AI.FunctionCallContent functionCall = (Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall;
 
-                    Console.WriteLine(
-                        $"The agent would like to invoke the following function: " +
-                        //$"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
-                        $"Name {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name}");
+                    var functionName = ((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name;
+                    _logger.LogToolApprovalRequest(functionName);
+                    //$"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
                     return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
@@ -365,29 +327,22 @@ public sealed class DotNetAI
                 approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
             }
 
-            Console.WriteLine($"\nAgent: {response}");
+            _logger.LogAgentResponse($"\nAgent: {response}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
+            _logger.LogError(ex.Message);
         }
-        Console.WriteLine("Press any key to exit.");
+
     }
 
 
 
-    //
-    //
-    // ------- SQlLite ------------------------
-    //
-    //
-
     // Store the embedding in a local SQLite
     public async Task StoreEmbedding(ReadOnlyMemory<float> embedding, string collectionName)
     {
-    
 
+        
         // 1. Create the connection
         var connection = new SqliteConnection("Data Source=pdfvec.db");
         await connection.OpenAsync();
@@ -414,25 +369,10 @@ public sealed class DotNetAI
     }
 
 
-    //
-    //
-    // --------EO SQLLite ---------------------
-    //
-    //
-
-
-
 
 
     public async Task Conversation(string conversation_starter)
     {
-        // --- Configuration ---
-        //const string ollamaEndpoint = "http://localhost:11434";
-        //const string ollamaModel = "llama3.2";
-
-        Console.WriteLine("Setting up OllamaChatClient as AsAIAgent...");
-
-
 
         ////    AIAgent agent = new AzureOpenAIClient(
         ////new Uri(endpoint),
@@ -461,13 +401,13 @@ public sealed class DotNetAI
 
             var deserializedSession = await agent.DeserializeSessionAsync(serialized);
 
-            //Console.WriteLine(await agent.RunAsync("List things I could like.", session));
+            //_logger.LogAgentResponse(await agent.RunAsync("List things I could like.", session));
 
             //Optional streaming response
             /*
             await foreach (var update in agent.RunStreamingAsync("List things i could potetially do and like.", session))
             {
-                Console.WriteLine(update);
+                _logger.LogAgentResponse(update);
             }
             */
 
@@ -477,12 +417,11 @@ public sealed class DotNetAI
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ModelEndpoint.AbsoluteUri} and model: {ModelName}");
+            _logger.LogError(ex.Message);
+
+            _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
 
-        Console.WriteLine("Press any key to exit.");
     }
 
     public async Task GetResponse(string question = @"Describe your model")
@@ -491,23 +430,19 @@ public sealed class DotNetAI
         const string ollamaEndpoint = "http://localhost:11434";
         const string ollamaModel = "llama3.2";
 
-        Console.WriteLine("Setting up OllamaChatClient...");
 
         try
         {
             IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
             var response = await client.GetResponseAsync(question);
             var txt = response?.Text;
-            Console.WriteLine($"Response: {txt}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+            _logger.LogError(ex.Message);
+            _logger.LogCheckOllamaConfig(ollamaEndpoint, ollamaModel);
         }
 
-        Console.WriteLine("Press any key to exit.");
     }
 
     // Suppress MEAI001 diagnostic for evaluation-only API usage
@@ -518,8 +453,6 @@ public sealed class DotNetAI
         // --- Configuration ---
         const string ollamaEndpoint = "http://localhost:11434";
         const string ollamaModel = "llama3.2";
-
-        Console.WriteLine("Setting up OllamaChatClient...");
 
         try
         {
@@ -535,18 +468,13 @@ public sealed class DotNetAI
                     Size = GeneratedImageSize.W1024xH1024
                 });
 
-
-            Console.WriteLine($"Response: {ollamaModel}");
-
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ollamaEndpoint} and model: {ollamaModel}");
+            _logger.LogError(ex.Message);
+            _logger.LogCheckOllamaConfig(ollamaEndpoint, ollamaModel);
         }
 
-        Console.WriteLine("Press any key to exit.");
     }
 
 
@@ -560,8 +488,6 @@ public sealed class DotNetAI
 
     public async Task GenerateEmbedding(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
     {
-        
-        Console.WriteLine("Setting up Semantic Kernel with Ollama...");
 
         try
         {
@@ -577,7 +503,7 @@ public sealed class DotNetAI
             // 3. Extract the vector data
             var vector = embeddings[0].Vector;
 
-            Console.WriteLine(vector.Length);
+            _logger.LogVectorDimension(vector.Length);
 
             //StoreEmbedding(vector, "arcdoc").Wait();
             // 1. Create the connection
@@ -613,17 +539,15 @@ public sealed class DotNetAI
 
             await collection.UpsertAsync(chunk);
 
-            Console.WriteLine(chunk.Vector.Length);
+            _logger.LogVectorDimension(chunk.Vector.Length);
 
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"An error occurred: {ex.Message}");
-            Console.WriteLine("Please ensure Ollama is running and the specified model is downloaded.");
-            Console.WriteLine($"Check your Ollama endpoint: {ModelEndpoint.AbsoluteUri} and model: {ModelName}");
+            _logger.LogError(ex.Message);
+            _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
 
-        Console.WriteLine("Press any key to exit.");
     }
 
 
@@ -645,25 +569,34 @@ public sealed class DotNetAI
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #pragma warning restore MEAI001
 
 }
+
+
+//    var httpClient = new HttpClient();
+//    PriceResult? pr = null;
+
+//    var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
+//    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+//    var content = await httpClient.GetStringAsync(url);
+
+//    dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+
+//    var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+//    foreach (var element in list!)
+//    {
+//        pr = JsonSerializer.Deserialize<PriceResult>(element);
+//        if (pr is not null)
+//        {
+//            string price = pr.price_usd ?? "0";
+//            _logger.LogAgentResponse(price);
+
+//        }
+//        //_logger.LogAgentResponse(element.GetProperty("price_us").GetString());
+//    }
 
 /*
 

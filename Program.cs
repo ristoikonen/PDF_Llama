@@ -3,6 +3,8 @@ using Agent_Ollama.Plugins;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Newtonsoft.Json.Schema;
 using OllamaSharp;
@@ -13,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using UglyToad.PdfPig.Graphics;
@@ -61,9 +64,39 @@ public class Configurator
 
 public class Program
 {
+    private static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole(); // Adds console as a log destination
+            builder.SetMinimumLevel(LogLevel.Information); // Filter log output
+        });
+
+        // Register custom application services so DI can construct them
+        services.AddTransient<DotNetAI>();
+        //services.AddTransient<IOrderService, OrderService>();
+    }
+
     static async Task Main(string[] args)
     {
         ConfigurationManager configurationManager = new ConfigurationManager();
+
+        var services = new ServiceCollection();
+
+        // 2. Configure services and add logging
+        ConfigureServices(services);
+
+
+        using var loggerFactory = LoggerFactory.Create(builder =>
+        {
+            builder
+                .AddFilter("Microsoft", LogLevel.Warning)
+                .AddFilter("System", LogLevel.Warning)
+                .AddFilter("Program", LogLevel.Debug)
+                .AddConsole();
+        });
+
+        ILogger logger = loggerFactory.CreateLogger<Program>();
 
         //Configuration config = ConfigurationManager..OpenExeConfiguration(Application.ExecutablePath);
         //ConfigurationSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
@@ -81,7 +114,7 @@ public class Program
 
         Uri uri = starts.ModelEndpoint;
 
-        DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName);
+        DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName, logger);
         AtoA a2a = new(starts.ModelEndpoint, starts.ModelName);
         AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
 
