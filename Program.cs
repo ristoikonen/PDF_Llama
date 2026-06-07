@@ -1,4 +1,6 @@
 ﻿using A2A;
+using Agent_Ollama.Helpers;
+using Agent_Ollama.Loggers;
 using Agent_Ollama.Plugins;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -15,6 +17,8 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -33,32 +37,27 @@ public class Configurator
     public dynamic Store;
     public Configurator()
     {
-        // https://stackoverflow.com/questions/1653046/what-are-the-true-benefits-of-expandoobject
-        // https://www.daveabrock.com/2021/01/19/config-top-level-programs/
         Store = new ExpandoObject();
         Store.Endpoints = new ExpandoObject();
-        Store.Endpoints.ModelName = "llama3.2";
+        Store.Endpoints.ModelName = "gemma3";   // "llama3.2";
         Store.Endpoints.ModelEndpoint = new Uri(@"http://localhost:11434");
-        //Console.WriteLine(${Store.Endpoints.ModelEndpoint});
 
-        Dictionary<String, object> dict = new Dictionary<string, object>();
-        Dictionary<String, object> address = new Dictionary<string, object>();
-        dict["Address"] = address;
-        address["State"] = "WA";
-        Console.WriteLine(((Dictionary<string, object>)dict["Address"])["State"]);
+        //Dictionary<String, object> dict = new Dictionary<string, object>();
+        //Dictionary<String, object> address = new Dictionary<string, object>();
+        //dict["Address"] = address;
+        //address["State"] = "WA";
+        //Console.WriteLine(((Dictionary<string, object>)dict["Address"])["State"]);
 
         Values = new Dictionary<string, string?>
         {
-            ["SecretKey"] = "Dictionary MyKey Value",
+            ["ModelName"] = Store.Endpoints.ModelName,
+            ["ModelEndpoint"] = Store.Endpoints.ModelEndpoint.ToString(),
             ["TransientFaultHandlingOptions:Enabled"] = bool.TrueString,
             ["TransientFaultHandlingOptions:AutoRetryDelay"] = "00:00:07",
             ["Logging:LogLevel:Default"] = "Warning"
         };
 
     }
-
-    // public string MyProperty { get; set; }
-
 }
 
 
@@ -83,9 +82,38 @@ public class Program
 
         var services = new ServiceCollection();
 
+        string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        string baseFolder = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        string logDirectory = baseFolder;
+
+        // Dynamically resolves to the current user's Documents folder
+        string documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        string systemFilePath = Path.Combine(documentsPath, "MyDataFolder", "log.txt");
+
+        // Automatically creates the directory with native read/write permissions inherited from the user
+        if (!Directory.Exists(logDirectory))
+        {
+            Directory.CreateDirectory(logDirectory);
+        }
+
+        //string baseDirectory = @"C:\tmp"; // "AppDomain.CurrentDomain.BaseDirectory;
+        //string html_LogsFolder = Path.Combine(baseDirectory, "HTML_Logs");
+        //string filePath = Path.Combine(targetFolder, "sample.txt");
+              
         // 2. Configure services and add logging
         ConfigureServices(services);
 
+        var starts = await FillStartMeUpsAsync();
+        //var config = configurationManager.GetRequiredSection("appSettings");
+
+        var configvalue1 = configurationManager.Sources; // ("ModelEndpoint"); //.AppSettings["countoffiles"];
+        configurationManager.AddConfiguration(new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ModelEndpoint"] = starts.ModelEndpoint.ToString(),
+                ["ModelName"] = starts.ModelName
+            })
+            .Build());  
 
         using var loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -93,20 +121,20 @@ public class Program
                 .AddFilter("Microsoft", LogLevel.Warning)
                 .AddFilter("System", LogLevel.Warning)
                 .AddFilter("Program", LogLevel.Debug)
+                .AddConfiguration(configurationManager)
+                .AddProvider(new HtmlLoggerProvider(logDirectory))
                 .AddConsole();
         });
 
         ILogger logger = loggerFactory.CreateLogger<Program>();
+        
 
         //Configuration config = ConfigurationManager..OpenExeConfiguration(Application.ExecutablePath);
         //ConfigurationSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
 
-        var starts = await FillStartMeUpsAsync();
-        //var config = configurationManager.GetRequiredSection("appSettings");
+        var mn = configurationManager["ModelName"];
 
-        var configvalue1 = configurationManager.Sources; // ("ModelEndpoint"); //.AppSettings["countoffiles"];
-
-        SpectreConsoleOutput.DisplayTitleH3($"Use Semantic Kernel Plugin; PDF Summariser -  Get response from Ollama IChatClient");
+        SpectreConsoleOutput.DisplayTitleH3($"Use MS Agent Framework; PDF Summariser, Agents, Plugins");
 
         // user choice scenarios
         var scenarios = SpectreConsoleOutput.SelectScenarios();
@@ -114,7 +142,8 @@ public class Program
 
         Uri uri = starts.ModelEndpoint;
 
-        DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName, logger);
+        // starts.ModelEndpoint, starts.ModelName
+        DotNetAI dotnetai = new(starts.ModelEndpoint, starts.ModelName, logger, configurationManager);
         AtoA a2a = new(starts.ModelEndpoint, starts.ModelName);
         AgentStructuredOutput agent_struct =  new(starts.ModelEndpoint, starts.ModelName);
 
@@ -164,6 +193,7 @@ public class Program
                 break;
 
             case "Oil Price Agent":
+                
                 await dotnetai.UseOilAgent("Get oil price.");
                 break;
 

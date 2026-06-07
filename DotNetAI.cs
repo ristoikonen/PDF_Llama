@@ -1,10 +1,12 @@
 ﻿using Agent_Ollama.Agents;
+using Agent_Ollama.Helpers;
 using Agent_Ollama.Models;
 using Azure.AI.OpenAI;
 using Google.Protobuf.WellKnownTypes;
 using Microsoft.Agents.AI;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
@@ -24,7 +26,6 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using static UglyToad.PdfPig.Core.PdfSubpath;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
-using Agent_Ollama.Helpers;
 
 namespace Agent_Ollama;
 
@@ -37,6 +38,7 @@ public sealed class DotNetAI
     public Uri ModelEndpoint { get; set; }
     public string ModelName { get; set; }
     private readonly ILogger _logger;
+    //public IConfiguration Config { get; }
 
     //record PriceResult(decimal Price);
 
@@ -50,11 +52,12 @@ public sealed class DotNetAI
         public string? percent_change_24h { get; init; }
     }
 
-    public DotNetAI(Uri modelEndpoint, string modelName, ILogger logger)
+    public DotNetAI(Uri modelEndpoint, string modelName, ILogger logger, IConfiguration config)
     {
         this.ModelEndpoint = modelEndpoint;
         this.ModelName = modelName;
         this._logger = logger;
+        //this.Config = config;
     }
 
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
@@ -116,9 +119,10 @@ public sealed class DotNetAI
     {
         // Access named parameters from the arguments dictionary.
         string? price = args.TryGetValue("price", out object? loc) ? loc?.ToString() : "$";
-        string? units = args.TryGetValue("units", out object? u) ? u?.ToString() : "barrel";
+        string? unit = args.TryGetValue("unit", out object? u) ? u?.ToString() : "barrel";
+        string? type = args.TryGetValue("type", out object? t) ? t?.ToString() : "WTI";
 
-        return $"Oli price in {units}: 101{price}";
+        return $"{type} oli price in {unit}: ${price}";
     };
 
     // Create the AIFunction.
@@ -129,12 +133,14 @@ public sealed class DotNetAI
 
         try
         {
+            _logger.LogAgent("OilPriceAgent", question);
+
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             // running locally via Ollama
 
             AIAgent agent = client.AsAIAgent(
-                instructions: "You are a helpful assistant finding current oil price in USD."
+                instructions: "You are a helpful assistant finding current oil barrel prices (WTI and Brent) in USD."
                // , tools: [tool]
                , tools: [AIFunctionFactory.Create(getOilPrice)]
                 );
@@ -244,7 +250,7 @@ public sealed class DotNetAI
             long startTime = Stopwatch.GetTimestamp();
 
 
-            TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint);
+            TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint, _logger);
 
             var roads = await traffic!.RushHour(city) ?? new List<Road>();
 
@@ -374,13 +380,6 @@ public sealed class DotNetAI
     public async Task Conversation(string conversation_starter)
     {
 
-        ////    AIAgent agent = new AzureOpenAIClient(
-        ////new Uri(endpoint),
-        ////new DefaultAzureCredential())
-        ////.GetChatClient(deploymentName)
-        ////.AsAIAgent(instructions: "You are good at telling jokes.", name: "Joker");
-
-
         try
         {
             const string question = "What roads have heavy traffic and which times and directions, in Melbourne?";
@@ -418,7 +417,6 @@ public sealed class DotNetAI
         catch (Exception ex)
         {
             _logger.LogError(ex.Message);
-
             _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
 
@@ -426,21 +424,16 @@ public sealed class DotNetAI
 
     public async Task GetResponse(string question = @"Describe your model")
     {
-        // --- Configuration ---
-        const string ollamaEndpoint = "http://localhost:11434";
-        const string ollamaModel = "llama3.2";
-
-
         try
         {
-            IChatClient client = new OllamaChatClient(new Uri(ollamaEndpoint), ollamaModel);
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
             var response = await client.GetResponseAsync(question);
             var txt = response?.Text;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex.Message);
-            _logger.LogCheckOllamaConfig(ollamaEndpoint, ollamaModel);
+            _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
 
     }
@@ -450,13 +443,9 @@ public sealed class DotNetAI
 
     public async Task CreateImage(string question = @"Hello!")
     {
-        // --- Configuration ---
-        const string ollamaEndpoint = "http://localhost:11434";
-        const string ollamaModel = "llama3.2";
-
         try
         {
-            ImageClient client = new(ollamaModel,"");
+            ImageClient client = new(ModelName,"");
 
             GeneratedImage generatedImage = await client.GenerateImageAsync("""
                 A postal card with a happy hiker waving and a beautiful mountain in the background.
@@ -472,19 +461,9 @@ public sealed class DotNetAI
         catch (Exception ex)
         {
             _logger.LogError(ex.Message);
-            _logger.LogCheckOllamaConfig(ollamaEndpoint, ollamaModel);
+            _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
-
     }
-
-
-
-
-
-
-
-
-
 
     public async Task GenerateEmbedding(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
     {

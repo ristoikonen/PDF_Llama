@@ -107,3 +107,7 @@ Steps to resolve:
 2. Use the `OllamaSharp` namespace: ensure files include `using OllamaSharp;` and `using OllamaSharp.Models;` where needed.
 3. Install the `OllamaSharp` NuGet package: `dotnet add package OllamaSharp` and restore packages.
 4. Ensure Ollama is running and the expected model is downloaded, e.g. `llama3.2`.
+
+
+        // https://stackoverflow.com/questions/1653046/what-are-the-true-benefits-of-expandoobject
+        // https://www.daveabrock.com/2021/01/19/config-top-level-programs/

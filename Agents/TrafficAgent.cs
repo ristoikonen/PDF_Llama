@@ -1,6 +1,9 @@
 ﻿using Agent_Ollama.Models;
+using Google.Protobuf.WellKnownTypes;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -8,6 +11,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using static OllamaSharp.OllamaApiClient;
 
 namespace Agent_Ollama.Agents;
 
@@ -19,23 +23,27 @@ internal sealed class UserInfo
 
 internal class TrafficAgent
 {
-    //TODO: logging
+
+    ILogger Logger { get; set; }
+
     private Uri ModelEndpoint { get; set; }
     private string ModelName { get; set; }
 
     const string AgentName = "Roadie";
-    public TrafficAgent(string ollamaModel, Uri ollamaEndpoint)
+    public TrafficAgent(string ollamaModel, Uri ollamaEndpoint, ILogger logger)
     {
-        this.ModelName = ollamaModel;
+        this.ModelName = ollamaModel;// configuration["ModelName"] ?? "";
         this.ModelEndpoint = ollamaEndpoint;
+        this.Logger = logger;
     }
-    
+
     // https://devblogs.microsoft.com/dotnet/microsoft-agent-framework-building-blocks-for-ai-part-3/
 
     public async Task<List<Road>> RushHour(string city)
     {
         try
         {
+            // Use the ModelName/ModelEndpoint already set on the instance
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
             AIAgent agent = client.AsAIAgent(
@@ -51,28 +59,19 @@ internal class TrafficAgent
             
             List<Road> roads = structuredResponse?.Result ?? new List<Road>();
 
+            Logger.LogInformation("heavy roads:");
+            roads.ForEach(r => Logger.LogInformation(new EventId(1), r.ToString()));
+
             var recommendeations = await agent.RunAsync(
                 "Now recommend how to get around these busiest roads.",
                 session);
 
             Console.WriteLine(recommendeations);
 
-            // JsonElement to file for inspection
-            /*
-            var serialized = await agent.SerializeSessionAsync(session);
-
-            using FileStream createStream = File.Create(@"c:\tmp\output.json");
-            var options = new JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-            await JsonSerializer.SerializeAsync(createStream, serialized, options);
-            var deserializedSession = await agent.DeserializeSessionAsync(serialized);
-            */
-
             foreach (var road in roads)
             {
                 Console.WriteLine(road.ToString() + Environment.NewLine);
+                Logger.LogInformation(new EventId(2), road.ToString());
             }
             
             return roads;
@@ -83,6 +82,5 @@ internal class TrafficAgent
             Console.WriteLine($"An error occurred: {ex.Message}");
         }
         return new List<Road>();
-        //Console.WriteLine("Press any key to exit.");
     }
 }

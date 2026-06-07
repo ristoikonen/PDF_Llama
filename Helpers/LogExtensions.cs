@@ -19,6 +19,15 @@ public static partial class LogExtensions
         Message = "Agent {agentName} with parameter {param}...")]
     public static partial void LogAgent(this ILogger logger, string agentName, string param);
 
+    //[LoggerMessage(
+    //EventId = 104,
+    //Level = LogLevel.Information,
+    //Message = "Agent {agentName} with parameter {param}...")]
+    //public static partial void LogAgent(this ILogger logger, string agentName, string param) 
+    //{
+    //    logger.LogInformation("Agent {agentName} with parameter {param}...", agentName, param);
+    //}
+
     // Response/Result logs
     [LoggerMessage(
         EventId = 106,
