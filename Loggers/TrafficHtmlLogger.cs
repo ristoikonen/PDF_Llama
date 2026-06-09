@@ -10,12 +10,12 @@ namespace Agent_Ollama.Loggers;
 
 
 [ProviderAlias("TrafficHtml")]
-public sealed class TrafficHtmlLoggerProvider : ILoggerProvider
+public sealed class TrafficAgentHtmlLoggerProvider : ILoggerProvider
 {
     private readonly string _filePath;
     private readonly ConcurrentDictionary<string, HtmlLogger> _loggers = new();
 
-    public TrafficHtmlLoggerProvider(string filePath)
+    public TrafficAgentHtmlLoggerProvider(string filePath)
     {
         _filePath = filePath;
     }
@@ -32,17 +32,16 @@ public sealed class TrafficHtmlLoggerProvider : ILoggerProvider
 }
 
 
-public class TrafficHtmlLogger : ILogger
+public class TrafficAgentHtmlLogger : ILogger
 {
     private readonly string _categoryName;
     private readonly string _filePath;
     private static readonly object _lock = new();
 
-    public TrafficHtmlLogger(string categoryName, string filePath)
+    public TrafficAgentHtmlLogger(string categoryName, string filePath)
     {
-        //TODO: use categoryName?
-        _categoryName = categoryName;
-        // YYYY missing
+        _categoryName = categoryName ?? "";
+        //TODO YYYY missing
         var filepathnow = DateTime.Now.ToString("MMM_d_dd_hh_mm_ss"); 
         var finalFilePath = Path.Combine(filePath, Process.GetCurrentProcess().ProcessName + "_" + filepathnow + @".html");
         _filePath = finalFilePath;
@@ -59,7 +58,7 @@ public class TrafficHtmlLogger : ILogger
                 string header = @"<!DOCTYPE html>
                     <html>
                     <head>
-                        <title>Application Logs - " + _filePath + @"</title>
+                        <title>Traffic Logs - " + _filePath + @"</title>
                         <style>
                             body { font-family: Segoe UI, sans-serif; margin: 20px; background: #f9f9f9; }
                             table { width: 100%; border-collapse: collapse; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -72,7 +71,8 @@ public class TrafficHtmlLogger : ILogger
                         </style>
                     </head>
                     <body>
-                        <h2>Execution Log Stream</h2>
+                        <h2>Taffic Log Stream</h2>
+                        <h4>" + _categoryName + @"</h4>
                         <table>
                             <tr>
                                 <th>Timestamp</th>
@@ -96,7 +96,7 @@ public class TrafficHtmlLogger : ILogger
         Func<TState, Exception?, string> formatter)
         //, TimeSpan timestamp )
     {
-        if (!IsEnabled(logLevel)) return;
+        //if (!IsEnabled(logLevel)) return;
 
         string message = formatter(state, exception);
 
@@ -110,39 +110,33 @@ public class TrafficHtmlLogger : ILogger
         {
             if(eventId.Id == 1)
             { 
-                logRow = $@"        <tr>
-            
+                logRow = $@"<tr>
                 <td>{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}</td>
                 <td class='{logLevel}'>HEAVY TRAFFIC</td>
                 <td>{safeCategory}</td>
                 <td>{safeMessage}</td>
                 <td><pre>{safeException}</pre></td>
-
-            </tr>";
+                </tr>";
             }
             if (eventId.Id == 2)
             {
-                logRow = $@"        <tr>
-            
+                logRow = $@"<tr>
                 <td>{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}</td>
                 <td class='{logLevel}'>WORKAROUND TRAFFIC</td>
                 <td>{safeCategory}</td>
                 <td>{safeMessage}</td>
                 <td><pre>{safeException}</pre></td>
-
-            </tr>";
+                </tr>";
             }
         }
         else
         {
-            logRow = $@"        <tr>
-            
+            logRow = $@"<tr>
             <td>{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}</td>
-            <td class='{logLevel}'>WORKAROUND TRAFFIC</td>
+            <td class='{logLevel}'>{logLevel}</td>
             <td>{safeCategory}</td>
             <td>{safeMessage}</td>
             <td><pre>{safeException}</pre></td>
-
             </tr>";
         }
         lock (_lock)
@@ -150,7 +144,6 @@ public class TrafficHtmlLogger : ILogger
             File.AppendAllText(_filePath, logRow + Environment.NewLine);
         }
     }
-
 
     public void Dispose()
     {
@@ -160,7 +153,6 @@ public class TrafficHtmlLogger : ILogger
         //    _writer.WriteLine("</table>"); // Write closing table tag
         //    _writer.WriteLine("<p>Log session ended.</p>");
         //    _writer.Dispose();
-        
 
         File.AppendAllText(_filePath, @"</table></body></html>");
     }

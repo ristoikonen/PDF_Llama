@@ -2,6 +2,7 @@
 using Agent_Ollama.Helpers;
 using Agent_Ollama.Loggers;
 using Agent_Ollama.Plugins;
+using Azure.Core.Pipeline;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
@@ -17,6 +18,7 @@ using System;
 using System.Collections.Generic;
 using System.Dynamic;
 using System.IO;
+using System.Net.Http;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text;
@@ -39,14 +41,8 @@ public class Configurator
     {
         Store = new ExpandoObject();
         Store.Endpoints = new ExpandoObject();
-        Store.Endpoints.ModelName = "gemma3";   // "llama3.2";
+        Store.Endpoints.ModelName = "gemma4";   // "llama3.2";
         Store.Endpoints.ModelEndpoint = new Uri(@"http://localhost:11434");
-
-        //Dictionary<String, object> dict = new Dictionary<string, object>();
-        //Dictionary<String, object> address = new Dictionary<string, object>();
-        //dict["Address"] = address;
-        //address["State"] = "WA";
-        //Console.WriteLine(((Dictionary<string, object>)dict["Address"])["State"]);
 
         Values = new Dictionary<string, string?>
         {
@@ -63,18 +59,39 @@ public class Configurator
 
 public class Program
 {
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddLogging(builder =>
-        {
-            builder.AddConsole(); // Adds console as a log destination
-            builder.SetMinimumLevel(LogLevel.Information); // Filter log output
-        });
 
-        // Register custom application services so DI can construct them
-        services.AddTransient<DotNetAI>();
+    //private static void ConfigureServices(IServiceCollection services, ConfigurationManager configurationManager)
+    //{
+    //    services.AddLogging(builder =>
+    //    {
+    //        builder
+    //            .AddFilter("Microsoft", LogLevel.Warning)
+    //            .AddFilter("System", LogLevel.Warning)
+    //            .AddFilter("Program", LogLevel.Debug)
+    //            .AddConfiguration(configurationManager)
+    //            .AddProvider(new HtmlLoggerProvider(logDirectory))
+    //        .AddProvider(new TrafficAgentHtmlLoggerProvider(logDirectory))
+    //        builder.AddConsole();
+    //        builder.SetMinimumLevel(LogLevel.Information); // Filter log output
+    //    });
+
+    //using var loggerFactory = LoggerFactory.Create(builder =>
+    //{
+    //    builder
+    //        .AddFilter("Microsoft", LogLevel.Warning)
+    //        .AddFilter("System", LogLevel.Warning)
+    //        .AddFilter("Program", LogLevel.Debug)
+    //        .AddConfiguration(configurationManager)
+    //        //.AddProvider(new HtmlLoggerProvider(logDirectory))
+    //        .AddProvider(new TrafficAgentHtmlLoggerProvider(logDirectory))
+    //        .AddConsole();
+    //});
+
+    // Register custom application services so DI can construct them
+    //services.AddTransient<DotNetAI>();
         //services.AddTransient<IOrderService, OrderService>();
-    }
+    //}
+
 
     static async Task Main(string[] args)
     {
@@ -101,7 +118,10 @@ public class Program
         //string filePath = Path.Combine(targetFolder, "sample.txt");
               
         // 2. Configure services and add logging
-        ConfigureServices(services);
+
+        //ConfigureServices(services, configurationManager);
+
+        services.AddTransient<DotNetAI>();
 
         var starts = await FillStartMeUpsAsync();
         //var config = configurationManager.GetRequiredSection("appSettings");
@@ -113,7 +133,7 @@ public class Program
                 ["ModelEndpoint"] = starts.ModelEndpoint.ToString(),
                 ["ModelName"] = starts.ModelName
             })
-            .Build());  
+            .Build());
 
         using var loggerFactory = LoggerFactory.Create(builder =>
         {
@@ -122,19 +142,19 @@ public class Program
                 .AddFilter("System", LogLevel.Warning)
                 .AddFilter("Program", LogLevel.Debug)
                 .AddConfiguration(configurationManager)
-                .AddProvider(new HtmlLoggerProvider(logDirectory))
+                //.AddProvider(new HtmlLoggerProvider(logDirectory))
+                .AddProvider(new TrafficAgentHtmlLoggerProvider(logDirectory))
                 .AddConsole();
         });
 
         ILogger logger = loggerFactory.CreateLogger<Program>();
-        
 
         //Configuration config = ConfigurationManager..OpenExeConfiguration(Application.ExecutablePath);
         //ConfigurationSection section = config.GetSection("connectionStrings") as ConnectionStringsSection;
 
-        var mn = configurationManager["ModelName"];
+        //var mn = configurationManager["ModelName"];
 
-        SpectreConsoleOutput.DisplayTitleH3($"Use MS Agent Framework; PDF Summariser, Agents, Plugins");
+        SpectreConsoleOutput.DisplayTitleH3($"Use MS Agent Framework; PDF Summariser, Agents, Plugins witj model: {configurationManager["ModelName"]}");
 
         // user choice scenarios
         var scenarios = SpectreConsoleOutput.SelectScenarios();
@@ -166,8 +186,6 @@ public class Program
                 string parts = @"C:\tmp\W812 - Parts List.pdf";
                 PDF_AI_Summariser pdf_AI_Summariser2 = new(starts.ModelEndpoint, starts.ModelName);
                 await pdf_AI_Summariser2.SummarizeFileUsingPdfContentPlugin(parts);
-
-                //await nested.CreateAgent("","");
                 break;
 
             case "AtoA":
@@ -182,7 +200,7 @@ public class Program
 
             case "Long Agent Task":
                 string book = System.IO.File.ReadAllText(@"C:\tmp\BooklInstructionS2.txt");
-                //await dotnetai.RunLongAgent($"Write booklet of about 25 pages that tutors student to pass AZ-900 'Azure Fundamentals' test. Write a paragraph per number: {book}");
+                //await dotnetai.RunLongAgent($"Write booklet of about 10 pages that tutors student to pass AZ-900 'Azure Fundamentals' test. Write a paragraph per number: {book}");
                 await dotnetai.RunLongAgent($"GENERATE QUESTIONS WITH ANSWERS FOR studentS to TRAIN FOR AZ-900 'Azure Fundamentals' test. CREATE ONE QUOESTION PER NUMBERED CAPTION: {book}");
                 break;
 
@@ -193,7 +211,6 @@ public class Program
                 break;
 
             case "Oil Price Agent":
-                
                 await dotnetai.UseOilAgent("Get oil price.");
                 break;
 
@@ -211,16 +228,52 @@ public class Program
                 break;
 
             case "Use Agent":
-                DotNetAI.GetWeather("paris");
-                await dotnetai.UseAgent("what is price of bitcoin?");
+                //DotNetAI.GetWeather("paris");
+                var instructions = "You are a helpful assistant getting latest Bitcoin price using AI Function GetBitcoinPrice.";
+                var question = "What is the price of Bitcoin?";
+                var aif = AIFunctionFactory.Create(CoinPrices.GetBitcoinPrice);
+                ApprovalRequiredAIFunction tool = new ApprovalRequiredAIFunction(aif);
+                await dotnetai.UseApprovalAgent(instructions, question, tool);  
                 break;
 
             case "Get Response":
-                await dotnetai.GetResponse("tell me about albert einstein");
+                //await dotnetai.GetResponse("tell me about albert einstein");
+                HttpClient client = new HttpClient();
+                
+                var bcprices = await DotNetAI.GetBitcoinPrice(client);
+
+                var prices = await DotNetAI.GetCoinPrices(client);
+                //logger.LogInformation("Coin price: {Price}", prices.Count > 0 ? prices[0]!.price_usd : "GetCoinPrice returned no prices");
+
+                var instructions2 = "You are a helpful assistant reporting latest coin prices using AI Function GetCoinPrices.";
+                var question2 = "What is the price of Ethereum and Tether, are there any big market movements lately?";
+                var aif2 = AIFunctionFactory.Create(CoinPrices.GetCoinPrices);
+                await dotnetai.RunAgent(instructions2, question2, aif2);
                 break;
 
             case "Generate image":
-                await dotnetai.CreateImage("draw a circle");
+                //using (HttpClient httpclient = new HttpClient())
+                //{
+                    //var aif_coin = AIFunctionFactory.Create(CoinPrices.GetCoin);
+
+                    //AIFunction aiFunc = AIFunctionFactory.Create(
+                    //    (AIFunctionArguments args) =>
+                    //    {
+                    //        string id = "80";
+                            
+                    //        return CoinPrices.GetCoin(id, httpclient);
+                    //    },
+                    //    name: "GetCoin"
+                    //);
+
+
+                    await dotnetai.RunCoinAgent("Get price of coin using GetCoin AI Function.", "What is the price of Tether?", "518");
+
+                    //var coinPrice = await aif_coin.InvokeAsync(httpclient, "80");
+
+                    //var aif_coin = AIFunctionFactory.Create(CoinPrices.GetCoinPrice);
+                
+                //await dotnetai.CreateImage("draw a circle");
                 break;
 
             case "IChatClient":
@@ -244,7 +297,6 @@ public class Program
                         key = new { type = "string" },
                         value = new { type = "string" },
                         count = new { type = "integer" }, 
-
                     },
                     required = new[] { "name", "value" }
                 };
@@ -277,8 +329,6 @@ public class Program
                 IChatClient chatClient =
                     new OllamaApiClient(starts.ModelEndpoint, starts.ModelName);
 
-
-
                 //var posts = Directory.GetFiles("my_document").Take(1).ToArray();
                 //var post = posts[0];
                 //string post = @"A pupa (from Latin pupa 'doll'; pl.: pupae) is the life stage of insects from the Holometabola clade undergoing transformation between immature and mature stages. Insects that go through a pupal stage are holometabolous: they go through four distinct stages in their life cycle, the stages thereof being egg, larva, pupa, and imago. The processes of entering and completing the pupal stage are controlled by the insect's hormones, especially juvenile hormone, prothoracicotropic hormone, and ecdysone. The act of becoming a pupa is called pupation, and the act of emerging from the pupal case is called eclosion or emergence.
@@ -307,7 +357,6 @@ public class Program
                 var response_to_prompt = await chatClient.GetResponseAsync(prompt2);
                 Console.WriteLine(response_to_prompt.Text);
                 Console.WriteLine(Environment.NewLine);
-
 
                 /*
                 List<ChatMessage> chatHistory = new();
@@ -343,15 +392,12 @@ public class Program
         string Name { get; set; }
         int Count { get; set; }
     }
-
-
     public class SparePart
     {
         public string ID { get; set; }
         public string Name { get; set; }
         public int Count { get; set; }
     }
-
 
     public class Doc
     {
@@ -547,6 +593,7 @@ public class Program
         }
     }
 
+    // Set model here!
     static async Task<StartMeUps> FillStartMeUpsAsync()
     {
         return await Task.FromResult<StartMeUps>(new StartMeUps
@@ -555,7 +602,7 @@ public class Program
             ModelName = "llama3.2"
         });
 
-        //"qwen3-embedding:0.6b" //"llama3.2" // "mistral"  "deepseek-r1:1.5b"
+        // gemma4:e4b "qwen3-embedding:0.6b" //"llama3.2" // "mistral"  "deepseek-r1:1.5b"
     }
 
 }

@@ -1,5 +1,6 @@
 ﻿using Agent_Ollama.Agents;
 using Agent_Ollama.Helpers;
+using Agent_Ollama.Loggers;
 using Agent_Ollama.Models;
 using Azure.AI.OpenAI;
 using Google.Protobuf.WellKnownTypes;
@@ -11,24 +12,27 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.VectorData;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.SqliteVec;
+using OllamaSharp.Models.Chat;
 using OpenAI.Images;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Web;
 using static UglyToad.PdfPig.Core.PdfSubpath;
 using ChatMessage = Microsoft.Extensions.AI.ChatMessage;
 
 namespace Agent_Ollama;
-
 #pragma warning disable MEAI001
 
 
@@ -39,19 +43,8 @@ public sealed class DotNetAI
     public string ModelName { get; set; }
     private readonly ILogger _logger;
     //public IConfiguration Config { get; }
-
     //record PriceResult(decimal Price);
-
-    record PriceResult
-    {
-        public string? id { get; init; }
-        public string? name { get; init; }
-        public string? symbol { get; init; }
-        public string? price_usd { get; init; }
-        public string? percent_change_1h { get; init; }     
-        public string? percent_change_24h { get; init; }
-    }
-
+    
     public DotNetAI(Uri modelEndpoint, string modelName, ILogger logger, IConfiguration config)
     {
         this.ModelEndpoint = modelEndpoint;
@@ -62,25 +55,44 @@ public sealed class DotNetAI
 
     // https://github.com/microsoft/agent-framework/blob/main/dotnet/samples/02-agents/Agents/Agent_Step01_UsingFunctionToolsWithApprovals/Program.cs
 
-
-    [Description("Fetches the current price of a Bitcoin.")]
-    public static async Task<string> GetBitcoinPrice(
-        //[Description("Cryptocurrency symbol, e.g. 'BTC', 'ETH'")] string id,
+    [Description("Fetches the current price data of a coin.")]
+    public static async Task<PriceResult> GetCoinPrice(
+        [Description("Cryptocurrency id for symbol, e.g. 90 = 'BTC', 80 = 'ETH'")] string id,
         HttpClient httpClient)
     {
+        //var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
         try
         {
             // Example: replace with a real provider
-            //var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
-            PriceResult? pr = null;
+            var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
 
-            var url = $"https://api.coinlore.net/api/ticker/?id=90";
+            //PriceResult? pr = null;
 
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
+            var results = await httpClient.GetFromJsonAsync<List<PriceResult>>(url);
+            
+            // Safely extract the first item using modern C# pattern matching
+            if (results is [var bitcoinData, ..])
+            {
+                return bitcoinData ?? new PriceResult();
+            }
+
+
+            /*
             var content = await httpClient.GetStringAsync(url);
 
             //var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content); // 1. Unused allocation
+
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(content); // 2. Second parse
+            foreach (var element in results!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element); // 3. Third parse
+                return pr?.price_usd ?? "0";
+            }
 
             dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
 
@@ -91,11 +103,98 @@ public sealed class DotNetAI
                 return pr?.price_usd ?? "0";
                 //Console.WriteLine(element.GetProperty("price_us").GetString());
             }
+            */
+
+            return new PriceResult();
+        }
+        catch (HttpRequestException ex)
+        {
+            //logger.LogWarning(ex, "Network error retrieving Bitcoin price from {Url}. \nError:: {StatusCode}", url, ex.StatusCode);
+            //return new PriceResult();
+        }
+        catch (JsonException ex)
+        {
+            //logger.LogWarning(ex, "JSON error parsing price data from {Url}. \nError:: {Message}", url, ex.Message);
+            //return new PriceResult();
+        }
+        catch (Exception ex)
+        {
+            //logger.LogError(ex, "Unexpected error occurred while retrieving Bitcoin price from {Url}. \nError:: {Message}", url, ex.Message);
+            //return new PriceResult();
+        }
+        return new PriceResult();
+    }
+
+
+    [Description("Fetches the current price of a Bitcoin.")]
+    public static async Task<string> GetBitcoinPrice(
+        //[Description("Cryptocurrency symbol, e.g. 'BTC', 'ETH'")] string id,
+        HttpClient httpClient)
+    {
+        var url = $"https://api.coinlore.net/api/ticker/?id=90";
+
+        try
+        {
+            // Example: replace with a real provider
+            //var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
+            PriceResult? pr = null;
+
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            var results = await httpClient.GetFromJsonAsync<List<PriceResult>>(url);
+            // Safely extract the first item using modern C# pattern matching
+            if (results is [var bitcoinData, ..])
+            {
+                return bitcoinData.price_usd ?? "0";
+            }
+
+            
+            
+            
+            
+            /*
+            var content = await httpClient.GetStringAsync(url);
+
+            //var result = await httpClient.GetFromJsonAsync<PriceResult>(url);
+
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content); // 1. Unused allocation
+
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(content); // 2. Second parse
+            foreach (var element in results!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element); // 3. Third parse
+                return pr?.price_usd ?? "0";
+            }
+
+
+
+
+
+            
+
+            dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
+
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
+            foreach (var element in list!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element);
+                return pr?.price_usd ?? "0";
+                //Console.WriteLine(element.GetProperty("price_us").GetString());
+            }
+            */
 
             return "0";
 
             //    ? $"{id.ToUpperInvariant()}: ${result.price_us ?? "N/A"} USD"
             //    : $"Price for {id} not available.";
+        }
+        catch (HttpRequestException ex)
+        {
+            return $"Network error retrieving Bitcoin price from {url}. \nError:: {ex.StatusCode}";
+        }
+        catch (JsonException ex)
+        {
+            return $"Failed parse price data : {ex.Message}";
         }
         catch (Exception ex)
         {
@@ -103,6 +202,39 @@ public sealed class DotNetAI
         }
     }
 
+
+    [Description("Fetches the current prices of coins.")]
+    public static async Task<List<PriceResult>> GetCoinPrices(HttpClient httpClient)
+    {
+        List<PriceResult> priceResults = new();
+        var url = @"https://api.coinlore.net/api/tickers/?start=0&limit=20";  //@"https://api.coinlore.net/api/tickers";
+        Uri uri = new Uri(url);
+        PriceResult? pr = null;
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+        try
+        {
+            var content = await httpClient.GetStringAsync(uri);
+
+            JsonElement? root = JsonSerializer.Deserialize<dynamic>(content);
+            JsonElement innerObject = root?.GetProperty("data") ?? default(JsonElement);
+            dynamic? dinnerObject = JsonSerializer.Deserialize<dynamic>(innerObject);
+            var list = JsonSerializer.Deserialize<List<JsonElement>>(dinnerObject);
+
+            foreach (var element in list!)
+            {
+                pr = JsonSerializer.Deserialize<PriceResult>(element);
+                priceResults.Add(pr!);
+            }
+            return priceResults;
+        }
+        catch (Exception ex)
+        {
+            //return $"Failed to retrieve price : {ex.Message}";
+            Console.WriteLine(ex.Message);
+            return new List<PriceResult>();
+        }
+    }
 
     [Description("Get the weather for a given location.")]
     public static string GetWeather([Description("The location to get the weather for.")] string location)
@@ -130,18 +262,16 @@ public sealed class DotNetAI
 
     public async Task UseOilAgent(string question)
     {
-
+        TrafficAgentHtmlLogger trafficHtmlLogger = new TrafficAgentHtmlLogger("OilPriceAgent", @"c:\tmp");
         try
         {
-            _logger.LogAgent("OilPriceAgent", question);
+            //_logger
+            trafficHtmlLogger.LogAgent("OilPriceAgent", question);
 
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
-
-            // running locally via Ollama
-
+            
             AIAgent agent = client.AsAIAgent(
                 instructions: "You are a helpful assistant finding current oil barrel prices (WTI and Brent) in USD."
-               // , tools: [tool]
                , tools: [AIFunctionFactory.Create(getOilPrice)]
                 );
 
@@ -150,14 +280,12 @@ public sealed class DotNetAI
             // First turn
             //_logger.LogAgentResponse(await agent.RunAsync("Find oli price per barrel.", session));
 
-
             //AIAgent agentoil = client.AsAIAgent(
             //    instructions: "You are a helpful assistant running finding current oil price."
             //   , tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
             //    );
 
             //_logger.LogAgentResponse(await agentoil.RunAsync("Find oli price per barrel."));
-
 
             AgentResponse response = await agent.RunAsync(question, session);
 
@@ -169,16 +297,110 @@ public sealed class DotNetAI
                 .ConvertAll(functionApprovalRequest =>
                 {
                     var functionName = ((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name;
-                    _logger.LogToolApprovalRequest(functionName);
-                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
+                    //_logger.LogToolApprovalRequest(functionName);
+                    Console.WriteLine("Write Y if you want to continue");
+                    return new ChatMessage(Microsoft.Extensions.AI.ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
                 response = await agent.RunAsync(userInputResponses, session);
 
                 approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
             }
+            trafficHtmlLogger.LogAgentResponse($"\nAgent: {response}");
+        }
+        catch (Exception ex)
+        {
+            trafficHtmlLogger.LogError(ex.Message);
+        }
+    }
+    
+    // USAGE:
+    // await dotnetai.RunAgent(@"Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test", AIFunctionFactory.Create(GetOilBarrelPrice));
+    public async Task RunAgent(string instructions, AIFunction? tool = null)
+    {
+        try
+        {
+            long startTime = Stopwatch.GetTimestamp();
 
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            AIAgent? agent = null;
+
+            if (tool is null)
+            {
+                agent = client.AsAIAgent(
+                    instructions: instructions 
+                    );
+            }
+            else {
+                agent = client.AsAIAgent(
+                instructions: instructions
+                , tools: [tool]
+                );
+            }
+            
+            //TODO:session
+            AgentSession session = await agent.CreateSessionAsync();
+            AgentResponse response = await agent.RunAsync(instructions, session);
+
+            Console.WriteLine(response);
             _logger.LogAgentResponse($"\nAgent: {response}");
+            _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+        }
+    }
+
+    public async Task RunCoinAgent(string instructions, string message, string id)
+    {
+        try
+        {
+            long startTime = Stopwatch.GetTimestamp();
+
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            using (HttpClient httpclient = new HttpClient())
+            {
+                //var aif_coin = AIFunctionFactory.Create(CoinPrices.GetCoin);
+
+                AIFunction aiFunc = AIFunctionFactory.Create(
+                    (AIFunctionArguments args) =>
+                    {
+                        return CoinPrices.GetCoin(id, httpclient);
+                    },
+                    name: "GetCoin"
+                );
+                var agent = client.AsAIAgent(
+               instructions: instructions
+               , tools: [aiFunc]
+               );
+
+                //var runOptions = new ChatClientAgentRunOptions
+                //{
+                //    ChatOptions = new ChatOptions
+                //    {
+                //        Tools = (IList<AITool>)aiFunc
+                //    }
+                //};
+                //,options: runOptions 
+                AgentResponse response = await agent.RunAsync(message    );
+
+                //TODO:session
+                //AgentSession session = await aiFunc.CreateSessionAsync();
+                //AgentResponse response = await agent.RunAsync(question, session);
+
+                Console.WriteLine(response.Text);
+                _logger.LogAgentResponse($"\nAgent: {response}");
+                _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
+                //await dotnetai.RunAgent("Get price of coin using GetCoin AI Function.", "What is the price of Bitcoin?", aif_coin);
+
+                //var coinPrice = await aif_coin.InvokeAsync(httpclient, "80");
+
+
+            }
+
 
         }
         catch (Exception ex)
@@ -187,28 +409,79 @@ public sealed class DotNetAI
         }
     }
 
-       
+
+
+    public async Task RunAgent(string instructions, string question, AIFunction? tool = null)
+    {
+        try
+        {
+            long startTime = Stopwatch.GetTimestamp();
+
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            AIAgent? agent = null;
+
+            if (tool is null)
+            {
+                agent = client.AsAIAgent(
+                    instructions: instructions
+                    );
+            }
+            else
+            {
+                agent = client.AsAIAgent(
+                instructions: instructions
+                , tools: [tool]
+                );
+            }
+
+            //TODO:session
+            AgentSession session = await agent.CreateSessionAsync();
+            AgentResponse response = await agent.RunAsync(question ,session);
+
+            Console.WriteLine(response);
+            _logger.LogAgentResponse($"\nAgent: {response}");
+            _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+        }
+    }
+
+
     // USAGE:
     // await dotnetai.RunLongAgent(@"Write tutorial to learn how to pass AZ-900 'Azure Fundamentals' test");
-    public async Task RunLongAgent(string instructions)
+    public async Task RunLongAgent(string instructions, AIFunction? tool = null)
     {
 
         try
         {
             long startTime = Stopwatch.GetTimestamp();
-            
-            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
-
-            AIAgent agent = client.AsAIAgent(
-                instructions: instructions
-                //, tools: [AIFunctionFactory.Create(GetOilBarrelPrice)]
-                );
 
             AgentRunOptions options = new()
             {
-                AllowBackgroundResponses = true
+                AllowBackgroundResponses = true,
                 //,AdditionalProperties = { "response_mode" = "streaming" } // Enable streaming responses
-            };  
+            };
+
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            AIAgent? agent = null;
+
+            if (tool is null)
+            {
+                agent = client.AsAIAgent(
+                    instructions: instructions
+                    );
+            }
+            else
+            {
+                agent = client.AsAIAgent(
+                instructions: instructions
+                , tools: [tool]
+                );
+            }
 
             AgentSession session = await agent.CreateSessionAsync();
 
@@ -225,13 +498,13 @@ public sealed class DotNetAI
 
                 options.ContinuationToken = response.ContinuationToken;
                 response = await agent.RunAsync(session, options);
+                
             }
 
-            System.IO.File.WriteAllText(@"C:\tmp\agent_response2NEW.txt", instructions + Environment.NewLine + response.Text);
-
+            //System.IO.File.WriteAllText(@"C:\tmp\agent_response2NEW.txt", instructions + Environment.NewLine + response.Text);
+            Console.WriteLine(response);
+            _logger.LogAgentResponse($"\nAgent: {response}");
             _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
-
-
         }
         catch (Exception ex)
         {
@@ -242,77 +515,64 @@ public sealed class DotNetAI
 
     public async Task TrafficAgent(string city)
     {
+        TrafficAgentHtmlLogger trafficHtmlLogger = new TrafficAgentHtmlLogger("TrafficAgent", @"c:\tmp");
         try
         {
-            _logger.LogAgent("TrafficAgent", city);
+            trafficHtmlLogger.LogAgent("TrafficAgent", city);
 
             var start =  DateTime.Now;
             long startTime = Stopwatch.GetTimestamp();
 
-
-            TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint, _logger);
+            TrafficAgent traffic = new TrafficAgent(ModelName, ModelEndpoint, trafficHtmlLogger);
 
             var roads = await traffic!.RushHour(city) ?? new List<Road>();
+            var around = await traffic.RoundRushHour(city) ?? new List<Road>();
 
             //TimeSpan elapsed = Stopwatch.GetElapsedTime(startTime);
-
             //LogExtensions.LogResponseElapsedTime(_logger, "Traffic report time:", Stopwatch.GetElapsedTime(startTime));
-            _logger.LogResponseElapsedTime("Traffic report time:", Stopwatch.GetElapsedTime(startTime).ToString());
+
+            trafficHtmlLogger.LogResponseElapsedTime("Traffic report elapsed time:", Stopwatch.GetElapsedTime(startTime).ToString());
 
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.Message);
+            trafficHtmlLogger.LogError(ex.Message);
         }
-
     }
 
-
-
-
-    public async Task UseAgent(string question)
+    // "You are a helpful assistant getting latest Bitcoin price using AI Function GetBitcoinPrice."
+    // "What is the price of Bitcoin?"
+    // [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetBitcoinPrice))]
+    public async Task UseApprovalAgent(string instructions, string message, AIFunction? tool = null)
     {
-
-
         try
         {
 
-        //    var httpClient = new HttpClient();
-        //    PriceResult? pr = null;
-
-        //    var url = $"https://api.coinlore.net/api/ticker/?id=90";
-
-        //    var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
-        //    var content = await httpClient.GetStringAsync(url);
-
-        //    dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
-
-        //    var list = JsonSerializer.Deserialize<List<JsonElement>>(content);
-        //    foreach (var element in list!)
-        //    {
-        //        pr = JsonSerializer.Deserialize<PriceResult>(element);
-        //        if (pr is not null)
-        //        {
-        //            string price = pr.price_usd ?? "0";
-        //            _logger.LogAgentResponse(price);
-
-        //        }
-        //        //_logger.LogAgentResponse(element.GetProperty("price_us").GetString());
-        //    }
-
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
 
-            AIAgent agent = client.AsAIAgent(
-                instructions: "You are a helpful assistant getting latest Bitcoin price using AI Function GetBitcoinPrice."
-               // , tools: [tool]
-               , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetBitcoinPrice))]
-            );
+            AIAgent? agent = null;
 
+            if (tool is null)
+            {
+                agent = client.AsAIAgent(
+                    instructions: instructions
+                    );
+            }
+            else
+            {
+                agent = client.AsAIAgent(
+                instructions: instructions
+                , tools: [tool]
+                );
+            }
+
+            //AIAgent agent = client.AsAIAgent(
+            //    instructions: instructions
+            //   , tools: [new ApprovalRequiredAIFunction(AIFunctionFactory.Create(GetBitcoinPrice))]
+            //);
 
             AgentSession session = await agent.CreateSessionAsync();
-
-            AgentResponse response = await agent.RunAsync(question, session);
+            AgentResponse response = await agent.RunAsync(message, session);
             List<ToolApprovalRequestContent> approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
 
             while (approvalRequests.Count > 0)
@@ -320,28 +580,24 @@ public sealed class DotNetAI
                 List<ChatMessage> userInputResponses = approvalRequests
                 .ConvertAll(functionApprovalRequest =>
                 {
-                    //Microsoft.Extensions.AI.FunctionCallContent functionCall = (Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall;
-
                     var functionName = ((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Name;
-                    _logger.LogToolApprovalRequest(functionName);
+                    //_logger.LogToolApprovalRequest(functionName);
+                    Console.WriteLine("Write Y if you want to continue.");
                     //$"Id: {((Microsoft.Extensions.AI.FunctionCallContent)functionApprovalRequest.ToolCall).Arguments?["id"] } , " +
-                    return new ChatMessage(ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
+                    return new ChatMessage(Microsoft.Extensions.AI.ChatRole.User, [functionApprovalRequest.CreateResponse(Console.ReadLine()?.Equals("Y", StringComparison.OrdinalIgnoreCase) ?? false)]);
                 });
 
                 response = await agent.RunAsync(userInputResponses, session);
 
                 approvalRequests = response.Messages.SelectMany(m => m.Contents).OfType<ToolApprovalRequestContent>().ToList();
             }
-
             _logger.LogAgentResponse($"\nAgent: {response}");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex.Message);
         }
-
     }
-
 
 
     // Store the embedding in a local SQLite
@@ -375,11 +631,8 @@ public sealed class DotNetAI
     }
 
 
-
-
     public async Task Conversation(string conversation_starter)
     {
-
         try
         {
             const string question = "What roads have heavy traffic and which times and directions, in Melbourne?";
@@ -443,27 +696,96 @@ public sealed class DotNetAI
 
     public async Task CreateImage(string question = @"Hello!")
     {
-        try
-        {
-            ImageClient client = new(ModelName,"");
+        HttpClient client = new HttpClient();
+        string url = @"http://localhost:11434/v1/images/generations";
 
-            GeneratedImage generatedImage = await client.GenerateImageAsync("""
-                A postal card with a happy hiker waving and a beautiful mountain in the background.
-                There is a trail visible in the foreground.
-                The postal card has text in red saying: 'You are invited for a hike!'
-                """,
-                new OpenAI.Images.ImageGenerationOptions
-                {
-                    Size = GeneratedImageSize.W1024xH1024
-                });
-
-        }
-        catch (Exception ex)
+        var payload = new
         {
-            _logger.LogError(ex.Message);
-            _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
-        }
+            model = "gemma4", // x/z-image-turbo 
+            prompt = "A cute robot learning to write C# code, digital art",
+            size = "1024x1024",
+            response_format = "b64_json"
+        };
+        string jsonPayload = JsonSerializer.Serialize(payload);
+        HttpContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+        using var httpClient = new HttpClient();
+               HttpResponseMessage response = await httpClient.PostAsync(url, content);
+               response.EnsureSuccessStatusCode();
+
+               string jsonResponse = await response.Content.ReadAsStringAsync();
+        return;
     }
+
+    /*
+     * public async Task CreateImage2(string question = @"Hello!")
+       {
+
+               private static readonly HttpClient client = new HttpClient();
+               string url = @"http://localhost:11434/v1/images/generations";
+
+               var payload = new
+               {
+                   model = "gemma4", // x/z-image-turbo 
+                   prompt = "A cute robot learning to write C# code, digital art",
+                   size = "1024x1024",
+                   response_format = "b64_json"
+               };
+
+
+       }
+      */
+    //    string jsonPayload = JsonSerializer.Serialize(payload);
+    //    HttpContent content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+    //    Console.WriteLine("Generating image... please wait...");
+
+    //    try
+    //    {
+    //        using var httpClient = new HttpClient();
+    //        HttpResponseMessage response = await httpClient.PostAsync(url, content);
+    //        response.EnsureSuccessStatusCode();
+
+    //        string jsonResponse = await response.Content.ReadAsStringAsync();
+
+    //        // Extract the base64 string from the json response
+    //        using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+    //        JsonElement root = doc.RootElement;
+    //        string base64Image = root.GetProperty("data")[0].GetProperty("b64_json").GetString();
+
+    //        if (!string.IsNullOrEmpty(base64Image))
+    //        {
+    //            // Convert Base64 back into image bytes and write to disk
+    //            byte[] imageBytes = Convert.FromBase64String(base64Image);
+    //            string outputPath = Path.Combine(Directory.GetCurrentDirectory(), "generated_output.png");
+
+    //            await File.WriteAllBytesAsync(outputPath, imageBytes);
+    //            Console.WriteLine($"Success! Image saved to: {outputPath}");
+    //        }
+    //    }
+    //    catch (Exception ex)
+    //    {
+    //        Console.WriteLine($"Error occurred: {ex.Message}");
+    //    }
+
+    //    // Use a different local name for the ImageClient to avoid shadowing 'httpClient'
+    //    ImageClient imageClient = new(ModelName,"");
+
+    //    GeneratedImage generatedImage = await imageClient.GenerateImageAsync("""
+    //        A postal card with a happy hiker waving and a beautiful mountain in the background.
+    //        There is a trail visible in the foreground.
+    //        The postal card has text in red saying: 'You are invited for a hike!'
+    //        """,
+    //        new OpenAI.Images.ImageGenerationOptions
+    //        {
+    //            Size = GeneratedImageSize.W1024xH1024
+    //        });
+    //}
+    //catch (Exception ex)
+    //{
+    //    _logger.LogError(ex.Message);
+    //    _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
+    //}
+
 
     public async Task GenerateEmbedding(string PDF_filename = @"C:\Users\risto\source\repos\PDF_Llama\PDFs\VN.pdf")
     {
@@ -569,13 +891,12 @@ public sealed class DotNetAI
 //    {
 //        pr = JsonSerializer.Deserialize<PriceResult>(element);
 //        if (pr is not null)
-//        {
-//            string price = pr.price_usd ?? "0";
-//            _logger.LogAgentResponse(price);
+        //{
+        //    string price = pr.price_usd ?? "0";
+        //    _logger.LogAgentResponse(price);
 
-//        }
-//        //_logger.LogAgentResponse(element.GetProperty("price_us").GetString());
-//    }
+        //}
+        //_logger.LogAgentResponse(element.GetProperty("price_us").GetString());
 
 /*
 

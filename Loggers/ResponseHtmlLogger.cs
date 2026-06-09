@@ -9,36 +9,16 @@ using System.IO;
 namespace Agent_Ollama.Loggers;
 
 
-[ProviderAlias("Html")]
-public sealed class HtmlLoggerProvider : ILoggerProvider
-{
-    private readonly string _filePath;
-    private readonly ConcurrentDictionary<string, HtmlLogger> _loggers = new();
-
-    public HtmlLoggerProvider(string filePath)
-    {
-        _filePath = filePath;
-    }
-
-    public ILogger CreateLogger(string categoryName)
-    {
-        return _loggers.GetOrAdd(categoryName, name => new HtmlLogger(name, _filePath));
-    }
-
-    public void Dispose()
-    {
-        _loggers.Clear();
-    }
-}
 
 
-public class HtmlLogger : ILogger
+
+public class ResponseHtmlLogger : ILogger
 {
     private readonly string _categoryName;
     private readonly string _filePath;
     private static readonly object _lock = new();
 
-    public HtmlLogger(string categoryName, string filePath)
+    public ResponseHtmlLogger(string categoryName, string filePath)
     {
         //TODO: use categoryName?
         _categoryName = categoryName;
@@ -96,7 +76,7 @@ public class HtmlLogger : ILogger
         Func<TState, Exception?, string> formatter)
         //, TimeSpan timestamp )
     {
-        //if (!IsEnabled(logLevel)) return;
+        if (!IsEnabled(logLevel)) return;
 
         string message = formatter(state, exception);
         // HTML encode values to prevent log-injection or breaking the HTML layout

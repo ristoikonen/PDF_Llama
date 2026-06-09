@@ -57,15 +57,12 @@ An irregular tree, 10 to 25 metres high. Its bark is smooth, creamy-white with a
 Source and further information: Field Guide to the Native Trees of the ACT, National Parks Association of the ACT Inc., 3rd ed, 2017, p.66
 ";
 
-
-
     // <summary>
     /// Represents information about a plant or tree.
     /// </summary>
     [Description("Information about a plant including it's name, latin name, size in metres, and description")]
     public class PlantInfo
     {
-
         [JsonPropertyName("name")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Name { get; set; }
@@ -96,7 +93,6 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
     [Description("Get plants name, latin name.")]
     public static PlantInfo ExtractPlantInfo(string name, string latinname)
     {
-       
         return new PlantInfo
         {
             //LatinName = latinname,
@@ -105,12 +101,9 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
         //return Array.Empty<PlantInfo>();
     }
 
-
     public async Task RunAgent()
     {
         try { 
-
-
             var httpClient = new HttpClient
             {
                 BaseAddress = new Uri("http://localhost:11434"),
@@ -129,7 +122,6 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
                 description: "You are a helpful assistant that extracts structured information about plants like their name, plants name in latin, size in metres and description."
             
             );
-
 
             AgentRunOptions runOptions = new()
             {
@@ -155,12 +147,8 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
             //}
 
             //PlantInfo[] plInfo = response.Result?.ToArray<PlantInfo>()!;
-
             //PlantInfo[] plInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text)!;
-
-
             // PlantInfo[] personInfo = JsonSerializer.Deserialize<PlantInfo[]>(response.Text, JsonSerializerOptions.Web)!;
-
 
             //, chatoptions: options
             /*
@@ -175,9 +163,6 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
 
             // Microsoft.Extensions.AI.ChatResponseFormat.ForJsonSchema<PlantInfo[]>()
 
-
-
-
             /*
            AIAgent agent = new OllamaApiClient(httpClient, ModelName)
                .AsAIAgent(
@@ -185,8 +170,6 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
                    name: "StructuredOutputAssistant",
                    tools: new[] { AIFunctionFactory.Create((Func<string,string,PlantInfo>)ExtractPlantInfo)}
                );
-
-
                       AIAgent agent = new OllamaApiClient(httpClient, ModelName)
                   .AsAIAgent(new ChatClientAgentOptions()
                   {
@@ -197,15 +180,11 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
                           ResponseFormat = ChatResponseFormat.ForJsonSchema<PlantInfo>()
                       }
                   });
-
                       IAsyncEnumerable<AgentResponseUpdate> updates = agent.RunStreamingAsync(
                           trees);
-
                       AgentResponse response = await updates.ToAgentResponseAsync();
-
                       PlantInfo[] plants = JsonSerializer.Deserialize<PlantInfo[]>(response.Text)!;
                                */
-
 
             //AgentSession session = await agent.CreateSessionAsync();
 
@@ -218,23 +197,12 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
 
             //var data = new { Message = response2.Text };
             //string json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
-
-
             //var jsonElement = JsonSerializer.Deserialize<JsonElement>(response2.Text);
 
-            //PlantInfo[] plInfo = JsonSerializer.Deserialize<PlantInfo[]>(response2.Text)!;
-
             PlantInfo[] pInfo = JsonSerializer.Deserialize<PlantInfo[]>(response2.Text, JsonSerializerOptions.Web)!;
-            
-
-
-
 
             //Console.WriteLine($" FirstName: {personInfo.Name},LastName: {personInfo.Name}, Age: {personInfo.LatinName}, Occupation: {personInfo.Description}");
-
-
             //Console.WriteLine(await agent.RunAsync("List things I could like.", session));
-
             //Optional streaming response
             /*
             await foreach (var update in agent.RunStreamingAsync("List things i could potetially do and like.", session))
@@ -242,10 +210,6 @@ Source and further information: Field Guide to the Native Trees of the ACT, Nati
                 Console.WriteLine(update);
             }
             */
-
-            //var deserializedSession = await agent.DeserializeSessionAsync(session);
-
-
         }
         catch (Exception ex)
         {
