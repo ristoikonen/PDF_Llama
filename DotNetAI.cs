@@ -377,31 +377,13 @@ public sealed class DotNetAI
                , tools: [aiFunc]
                );
 
-                //var runOptions = new ChatClientAgentRunOptions
-                //{
-                //    ChatOptions = new ChatOptions
-                //    {
-                //        Tools = (IList<AITool>)aiFunc
-                //    }
-                //};
-                //,options: runOptions 
-                AgentResponse response = await agent.RunAsync(message    );
-
-                //TODO:session
-                //AgentSession session = await aiFunc.CreateSessionAsync();
-                //AgentResponse response = await agent.RunAsync(question, session);
-
+                
+                AgentResponse response = await agent.RunAsync(message);
                 Console.WriteLine(response.Text);
+
                 _logger.LogAgentResponse($"\nAgent: {response}");
                 _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
-                //await dotnetai.RunAgent("Get price of coin using GetCoin AI Function.", "What is the price of Bitcoin?", aif_coin);
-
-                //var coinPrice = await aif_coin.InvokeAsync(httpclient, "80");
-
-
             }
-
-
         }
         catch (Exception ex)
         {
@@ -409,6 +391,17 @@ public sealed class DotNetAI
         }
     }
 
+    //var runOptions = new ChatClientAgentRunOptions
+    //{
+    //    ChatOptions = new ChatOptions
+    //    {
+    //        Tools = (IList<AITool>)aiFunc
+    //    }
+    //};
+    //,options: runOptions 
+    //TODO:session
+    //AgentSession session = await aiFunc.CreateSessionAsync();
+    //AgentResponse response = await agent.RunAsync(question, session);
 
 
     public async Task RunAgent(string instructions, string question, AIFunction? tool = null)

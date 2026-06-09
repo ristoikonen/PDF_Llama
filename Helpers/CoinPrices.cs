@@ -10,8 +10,9 @@ using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Agent_Ollama.Helpers;
-    public static class CoinPrices
-    {
+
+public static class CoinPrices
+{
 
     [Description("Fetches the current price of a Bitcoin.")]
     public static async Task<string> GetBitcoinPrice(
@@ -58,8 +59,10 @@ namespace Agent_Ollama.Helpers;
     public static async Task<List<PriceResult>> GetCoinPrices(HttpClient httpClient)
     {
         List<PriceResult> priceResults = new();
-        var url = @"https://api.coinlore.net/api/tickers/?start=0&limit=20";  //@"https://api.coinlore.net/api/tickers";
-        Uri uri = new Uri(url);
+        
+        //@"https://api.coinlore.net/api/tickers";
+
+        Uri uri = new Uri(@"https://api.coinlore.net/api/tickers/?start=0&limit=20");
         PriceResult? pr = null;
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
@@ -90,7 +93,7 @@ namespace Agent_Ollama.Helpers;
 
     [Description("Fetches the current price data of a coin.")]
     public static async Task<PriceResult> GetCoin(
-    [Description("Cryptocurrency id for symbol, e.g. 90 = 'BTC', 80 = 'ETH'")] string id,
+    [Description("Cryptocurrency NUMERIC id for symbol, e.g. 90 = 'BTC', 80 = 'ETH'")] string id,
         HttpClient httpClient)
     {
         try
@@ -99,36 +102,29 @@ namespace Agent_Ollama.Helpers;
 
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
 
-            var results = await httpClient.GetFromJsonAsync<List<PriceResult>>(url);
+            var results = await httpClient.GetFromJsonAsync<List<PriceResult>>(url, options);
 
             // Safely extract the first item using modern C# pattern matching
-            if (results is [var bitcoinData, ..])
+            if (results is [var coinData, ..])
             {
-                return bitcoinData ?? new PriceResult();
+                return coinData ?? new PriceResult();
             }
 
             return new PriceResult();
         }
         catch (HttpRequestException ex)
         {
-            //logger.LogWarning(ex, "Network error retrieving Bitcoin price from {Url}. \nError:: {StatusCode}", url, ex.StatusCode);
-            //return new PriceResult();
+            throw new HttpRequestException($"Network error invoking crypto provider: {ex.StatusCode}", ex);
         }
         catch (JsonException ex)
         {
-            //logger.LogWarning(ex, "JSON error parsing price data from {Url}. \nError:: {Message}", url, ex.Message);
-            //return new PriceResult();
+            throw new JsonException("Failed to parse coin payload schema.", ex);
         }
         catch (Exception ex)
         {
             //logger.LogError(ex, "Unexpected error occurred while retrieving Bitcoin price from {Url}. \nError:: {Message}", url, ex.Message);
-            //return new PriceResult();
+            throw new Exception("An unexpected error occurred.", ex);
         }
-        return new PriceResult();
     }
-
-
-
-
 }
 
