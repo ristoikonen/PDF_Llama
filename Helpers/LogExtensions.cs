@@ -1,23 +1,27 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace Agent_Ollama.Helpers;
 
 public static partial class LogExtensions
 {
+
     [LoggerMessage(
         EventId = 101,
         Level = LogLevel.Information,
-        Message = "Stored embedding of collection name {collectionName}.")]
+        Message = "Stored embedding {embedding} of collection name {collectionName}.")]
     public static partial void LogStoreEmbedding(this ILogger logger, ReadOnlyMemory<float> embedding, string collectionName);
-
+        
     [LoggerMessage(
         EventId = 102,
         Level = LogLevel.Information,
-        Message = "Agent {agentName} with parameter {param}...")]
-    public static partial void LogAgent(this ILogger logger, string agentName, string param);
+        Message = "{methodName}({lineNumber})\tAgent {agentName} with parameter {param}...")]
+    public static partial void LogAgent(this ILogger logger, string agentName, string param,
+        [CallerMemberName] string methodName = "", [CallerLineNumber] int lineNumber = 0);
 
     //[LoggerMessage(
     //EventId = 104,
@@ -32,8 +36,8 @@ public static partial class LogExtensions
     [LoggerMessage(
         EventId = 106,
         Level = LogLevel.Information,
-        Message = "Agent response: {response}")]
-    public static partial void LogAgentResponse(this ILogger logger, string response);
+        Message = "{methodName}({lineNumber})\tAgent response: {response}")]
+    public static partial void LogAgentResponse(this ILogger logger, string response, [CallerMemberName] string methodName = "", [CallerLineNumber] int lineNumber = 0);
 
     [LoggerMessage(
         EventId = 108,

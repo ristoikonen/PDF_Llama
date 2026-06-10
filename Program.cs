@@ -144,6 +144,15 @@ public class Program
                 .AddConfiguration(configurationManager)
                 //.AddProvider(new HtmlLoggerProvider(logDirectory))
                 .AddProvider(new TrafficAgentHtmlLoggerProvider(logDirectory))
+                .AddProvider(new ColorConsoleLoggerProvider("",1))
+                //{
+                //    // Replace value of "Cyan" from appsettings.json.
+                //    configuration.LogLevelToColorMap[LogLevel.Warning]
+                //        = ConsoleColor.DarkCyan;
+                //    // Replace value of "Red" from appsettings.json.
+                //    configuration.LogLevelToColorMap[LogLevel.Error]
+                //        = ConsoleColor.DarkRed;
+                //}))
                 .AddConsole();
         });
 
@@ -237,11 +246,9 @@ public class Program
                 break;
 
             case "Get Response":
-                //await dotnetai.GetResponse("tell me about albert einstein");
                 HttpClient client = new HttpClient();
                 
                 var bcprices = await DotNetAI.GetBitcoinPrice(client);
-
                 var prices = await DotNetAI.GetCoinPrices(client);
                 //logger.LogInformation("Coin price: {Price}", prices.Count > 0 ? prices[0]!.price_usd : "GetCoinPrice returned no prices");
 
@@ -267,14 +274,15 @@ public class Program
                     //);
 
 
-                    await dotnetai.RunCoinAgent("Get price of coin using GetCoin AI Function.", "What is the price of Tether?", "518");
+                    await dotnetai.RunCoinPricesAgent("Get price of coins using GetCoin AI Function.", "List prices?", "510");
+                    //RunCoinAgent
 
                     //var coinPrice = await aif_coin.InvokeAsync(httpclient, "80");
 
                     //var aif_coin = AIFunctionFactory.Create(CoinPrices.GetCoinPrice);
-                
-                //await dotnetai.CreateImage("draw a circle");
-                break;
+
+                    //await dotnetai.CreateImage("draw a circle");
+                    break;
 
             case "IChatClient":
 
@@ -410,19 +418,9 @@ public class Program
         // --- Configuration ---
         const string ollamaEndpoint = "http://localhost:11434";
         const string ollamaModel = "llama3.2";
-        // Name of the sample text file to summarize. Make sure this file exists in the
-        // same directory as your application's executable, or provide a full path.
-        const string sampleFileName = "my_document.txt";
 
         ImageExtractor extract = new ImageExtractor();
         await extract.ReadPdf(@"C:\tmp\Government-Response-p2019-41708.pdf");
-
-        Console.WriteLine("Setting up Semantic Kernel with Ollama...");
-
-
-        // --- Create a sample text file for demonstration ---
-        // This ensures there's a file for the plugin to read.
-        await CreateSampleTextFile(sampleFileName);
 
         // --- Initialize the Semantic Kernel ---
         try
@@ -446,9 +444,6 @@ public class Program
             kernel.Plugins.Add(pdfContentPlugin);
 
             Console.WriteLine("PdfContentPlugin loaded successfully.");
-
-            // --- Define the path to the text file ---
-            //string filePath = Path.GetFullPath(sampleFileName);
 
             // AIAgent aIAgent = new AIAgent(pdfContentPlugin);
 

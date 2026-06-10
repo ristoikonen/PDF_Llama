@@ -1,5 +1,7 @@
-﻿using Agent_Ollama.Models;
+﻿using Agent_Ollama.Loggers;
+using Agent_Ollama.Models;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,6 +15,7 @@ namespace Agent_Ollama.Helpers;
 
 public static class CoinPrices
 {
+    private static readonly ILogger _logger = new ColorConsoleLogger("", () => new ColorConsoleLoggerConfiguration());
 
     [Description("Fetches the current price of a Bitcoin.")]
     public static async Task<string> GetBitcoinPrice(
@@ -63,23 +66,41 @@ public static class CoinPrices
         //@"https://api.coinlore.net/api/tickers";
 
         Uri uri = new Uri(@"https://api.coinlore.net/api/tickers/?start=0&limit=20");
-        PriceResult? pr = null;
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
+                
         try
         {
             var content = await httpClient.GetStringAsync(uri);
 
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            //var list = await httpClient.GetFromJsonAsync<List<PriceResult>>(uri, options);
+
+
             JsonElement? root = JsonSerializer.Deserialize<dynamic>(content);
             JsonElement innerObject = root?.GetProperty("data") ?? default(JsonElement);
-            dynamic? dinnerObject = JsonSerializer.Deserialize<dynamic>(innerObject);
-            var list = JsonSerializer.Deserialize<List<JsonElement>>(dinnerObject);
 
-            foreach (var element in list!)
-            {
-                pr = JsonSerializer.Deserialize<PriceResult>(element);
-                priceResults.Add(pr!);
-            }
+            // Deserialize directly to List<PriceResult>
+            var list = JsonSerializer.Deserialize<List<PriceResult>>(innerObject, options);
+
+            //dynamic? dinnerObject = JsonSerializer.Deserialize<dynamic>(innerObject);
+            //var list = JsonSerializer.Deserialize<List<JsonElement>>(dinnerObject);
+
+            //if (list is [var coinData, ..])
+            //{
+                foreach (var price in list!)
+                {
+                    //pr = JsonSerializer.Deserialize<PriceResult>(element);
+                    priceResults.Add(price);
+
+                    _logger.LogDebug($"{price!.symbol}", $"Coint {price!.name} has USD price of {price!.price_usd:C}");
+                }
+
+                // _logger.LogDebug($"Retrieved price data for {coinData.name}", $"Coin {coinData.name} has USD price of {coinData.price_usd:C}");
+                // _logger.LogInformation($"Coin {coinData.name} has USD price of {coinData.price_usd:C}");
+                //return coinData ?? new PriceResult();
+            //}
+
+
+            
             return priceResults;
         }
         catch (Exception ex)
@@ -101,14 +122,16 @@ public static class CoinPrices
             var url = $"https://api.coinlore.net/api/ticker/?id={id.ToUpperInvariant()}";
 
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-
             var results = await httpClient.GetFromJsonAsync<List<PriceResult>>(url, options);
 
             // Safely extract the first item using modern C# pattern matching
             if (results is [var coinData, ..])
             {
+                _logger.LogDebug($"Retrieved price data for {coinData.name}", $"Coin {coinData.name} has USD price of {coinData.price_usd:C}");
+                _logger.LogInformation($"Coin {coinData.name} has USD price of {coinData.price_usd:C}");
                 return coinData ?? new PriceResult();
             }
+    
 
             return new PriceResult();
         }

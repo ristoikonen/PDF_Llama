@@ -35,16 +35,6 @@ public sealed class PDF_AI_Summariser : IOllamaBase
         
     public async Task SummarizeFileUsingPdfContentPlugin(string PDF_filename = @"C:\Users\OneDrive\Documents\what_evolution_is_not.pdf")
     {
-        // --- Configuration ---
-        //const string ollamaEndpoint = "http://localhost:11434";
-        //const string ollamaModel = "llama3.2";
-
-
-        // --- Create a sample text file for demonstration ---
-        // This ensures there's a file for the plugin to read.
-        //await CreateSampleTextFile(PDF_filename);
-
-        // --- Initialize the Semantic Kernel ---
         try
         {
             string PDF_filename_parts = @"C:\tmp\W812 - Parts List.pdf";
@@ -76,10 +66,6 @@ public sealed class PDF_AI_Summariser : IOllamaBase
 
             var kvcPlugin = kernel.CreatePluginFromObject(new KVCPlugin());
             Console.WriteLine("KVCPlugin loaded successfully.");
-
-            // --- Define the path to the text file ---
-            //string filePath = Path.GetFullPath(sampleFileName);
-            //Console.WriteLine($"Attempting to summarize file: {filePath}");
 
             var result_parts = await kernel.InvokeAsync(
                 kvcPlugin["GetTuples"],

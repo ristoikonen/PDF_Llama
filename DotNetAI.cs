@@ -147,9 +147,6 @@ public sealed class DotNetAI
             {
                 return bitcoinData.price_usd ?? "0";
             }
-
-            
-            
             
             
             /*
@@ -165,12 +162,6 @@ public sealed class DotNetAI
                 pr = JsonSerializer.Deserialize<PriceResult>(element); // 3. Third parse
                 return pr?.price_usd ?? "0";
             }
-
-
-
-
-
-            
 
             dynamic? obj = JsonSerializer.Deserialize<dynamic>(content);
 
@@ -353,10 +344,62 @@ public sealed class DotNetAI
         }
     }
 
+    public async Task RunCoinPricesAgent(string instructions, string message, string id)
+    {
+        try
+        {
+            // _logger.LogAgent()
+            string filepath = @"c:\tmp\" + Process.GetCurrentProcess().ProcessName + "_" + DateTime.Now.ToString("MMM_d_dd_hh_mm_ss") + @".html";
+
+            CoinAgentHtmlLogger.InitCoinAgentHtmlLogger(this._logger, "CoinAgent", filepath);
+            CoinAgentHtmlLogger.LogInfo(this._logger, message, 1);
+
+            long startTime = Stopwatch.GetTimestamp();
+
+            IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
+
+            using (HttpClient httpclient = new HttpClient())
+            {
+                //var aif_coin = AIFunctionFactory.Create(CoinPrices.GetCoin);
+
+                AIFunction aiFunc = AIFunctionFactory.Create(
+                    (AIFunctionArguments args) =>
+                    {
+                        return CoinPrices.GetCoinPrices(httpclient);
+                    },
+                    name: "GetCoinPrices"
+                );
+                var agent = client.AsAIAgent(
+                    instructions: instructions
+                    , tools: [aiFunc]
+               );
+
+                AgentResponse response = await agent.RunAsync(message);
+                Console.WriteLine(response.Text);
+                CoinAgentHtmlLogger.LogInfo(this._logger, message, 1);
+
+                //_logger.LogAgentResponse($"\nAgent: {response}");
+                _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.Message);
+        }
+    }
+
+
+
     public async Task RunCoinAgent(string instructions, string message, string id)
     {
         try
         {
+           // _logger.LogAgent()
+            string filepath = @"c:\tmp\" + Process.GetCurrentProcess().ProcessName + "_" + DateTime.Now.ToString("MMM_d_dd_hh_mm_ss") + @".html";
+
+            CoinAgentHtmlLogger.InitCoinAgentHtmlLogger(this._logger, "CoinAgent", filepath);
+            CoinAgentHtmlLogger.LogInfo(this._logger, message, 1);
+
             long startTime = Stopwatch.GetTimestamp();
 
             IChatClient client = new OllamaChatClient(ModelEndpoint, ModelName);
@@ -376,12 +419,12 @@ public sealed class DotNetAI
                instructions: instructions
                , tools: [aiFunc]
                );
-
                 
                 AgentResponse response = await agent.RunAsync(message);
                 Console.WriteLine(response.Text);
+                CoinAgentHtmlLogger.LogInfo(this._logger, message, 1);
 
-                _logger.LogAgentResponse($"\nAgent: {response}");
+                //_logger.LogAgentResponse($"\nAgent: {response}");
                 _logger.LogResponseElapsedTime("Final response time:", Stopwatch.GetElapsedTime(startTime).ToString());
             }
         }
@@ -511,7 +554,7 @@ public sealed class DotNetAI
         TrafficAgentHtmlLogger trafficHtmlLogger = new TrafficAgentHtmlLogger("TrafficAgent", @"c:\tmp");
         try
         {
-            trafficHtmlLogger.LogAgent("TrafficAgent", city);
+            trafficHtmlLogger.LogAgent("TrafficAgent", city,"",0);
 
             var start =  DateTime.Now;
             long startTime = Stopwatch.GetTimestamp();
@@ -617,12 +660,8 @@ public sealed class DotNetAI
             //TODO: Add PDFs filename
             FileName = collectionName
         };
-
         await collection.UpsertAsync(chunk);
-
-
     }
-
 
     public async Task Conversation(string conversation_starter)
     {
@@ -657,15 +696,12 @@ public sealed class DotNetAI
             */
 
             //var deserializedSession = await agent.DeserializeSessionAsync(session);
-
-
         }
         catch (Exception ex)
         {
             _logger.LogError(ex.Message);
             _logger.LogCheckOllamaConfig(ModelEndpoint.AbsoluteUri, ModelName);
         }
-
     }
 
     public async Task GetResponse(string question = @"Describe your model")
